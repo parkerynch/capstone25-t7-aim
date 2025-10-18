@@ -114,3 +114,21 @@ export class MyTestManager extends MyCoreManager<TestModel, HelloService> {
 
 //*export default
 export default new HelloService();
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export class GeminiService {
+    private genAI: GoogleGenerativeAI;
+
+    constructor() {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY is not set');
+        }
+        this.genAI = new GoogleGenerativeAI(apiKey);
+    }
+
+    public getClient() {
+        return this.genAI;
+    }
+}

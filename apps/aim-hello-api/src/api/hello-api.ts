@@ -111,6 +111,7 @@ export class HelloAPIController extends GeneralWEBController {
         const errScope = `doPost(${this.type()}/${id ?? ''})`;
         _log(NS, `${errScope} ...`);
         if (id == 'echo') return this.doPostEcho('0', param, body, context);
+        if (id == 'analyze') return this.doPostAnalyze('0', param, body, context);
 
         //* append into array.
         _log(NS, errScope);
@@ -160,6 +161,117 @@ export class HelloAPIController extends GeneralWEBController {
         const i = $U.N(node?.id, 0);
         delete this.BUFF[i];
         return this.modelAsView(node);
+    };
+
+    /**
+     * Analyze the project.
+     *
+     * ```sh
+     * $ http POST ':8000/hello/analyze' s3Url=...
+     */
+    public doPostAnalyze: NextHandler = async (id, param, body, context) => {
+        const errScope = `doPostAnalyze(${this.type()}/${id ?? ''})`;
+        _log(NS, `${errScope} ...`);
+
+        const s3Url = body?.s3Url;
+        if (!s3Url) {
+            throw new Error('s3Url is required');
+        }
+
+        _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
+
+        // 1. Download the file from S3
+        const protocol = s3Url.startsWith('https://') ? require('https') : require('http');
+        const fs = require('fs');
+        const os = require('os');
+        const path = require('path');
+
+        _log(NS, `[DEBUG] Selected protocol: ${protocol.globalAgent.protocol}`);
+
+        const downloadedFilePath = path.join(os.tmpdir(), `project.zip`);
+        const file = fs.createWriteStream(downloadedFilePath);
+
+        await new Promise((resolve, reject) => {
+            // ⭐️ 수정된 부분: 선택된 프로토콜(http 또는 https)을 사용합니다.
+            protocol
+                .get(s3Url, (response: any) => {
+                    // S3 리다이렉션 처리 (Presigned URL은 가끔 리다이렉션을 포함할 수 있음)
+                    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                        const redirectProtocol = response.headers.location.startsWith('https://')
+                            ? require('https')
+                            : require('http');
+                        redirectProtocol
+                            .get(response.headers.location, (redirectResponse: any) => {
+                                redirectResponse.pipe(file);
+                                file.on('finish', () => {
+                                    file.close();
+                                    resolve(null);
+                                });
+                            })
+                            .on('error', (err: any) => {
+                                fs.unlink(downloadedFilePath, () => {});
+                                reject(err);
+                            });
+                        return;
+                    }
+
+                    response.pipe(file);
+                    file.on('finish', () => {
+                        file.close();
+                        resolve(null);
+                    });
+                })
+                .on('error', (err: any) => {
+                    fs.unlink(downloadedFilePath, () => {});
+                    reject(err);
+                });
+        });
+
+        // 2. Construct the prompt
+        const prompt = `
+            Analyze the provided zip file and identify the frontend and backend services.
+            The project structure is a monorepo with 'apps/frontend' and 'apps/backend' directories.
+            The frontend is a React application and the backend is a Node.js application.
+            Provide the framework and language for each service.
+            The output should be a JSON object with the following structure:
+            {
+                "frontend": {
+                    "framework": "React",
+                    "language": "TypeScript"
+                },
+                "backend": {
+                    "framework": "Express.js",
+                    "language": "TypeScript"
+                }
+            }
+        `;
+
+        // // 3. Call the Gemini service  <-- 주석 처리
+        // const { GeminiService } = require('../service/service');
+        // const geminiService = new GeminiService();
+        // const genAI = geminiService.getClient();
+        // const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+        // const result = await model.generateContent(prompt);
+        // const response = await result.response;
+        // const text = await response.text();
+
+        // // 4. Return the analysis JSON <-- 주석 처리
+        // return JSON.parse(text);
+
+        // ⭐️ 4. Return a mock analysis JSON (가짜 응답 반환)
+        _log(NS, `[DEBUG] Bypassing Gemini API call and returning mock data.`);
+        const mockAnalysis = {
+            frontend: {
+                framework: 'React',
+                language: 'TypeScript',
+            },
+            backend: {
+                framework: 'Express.js',
+                language: 'TypeScript',
+            },
+        };
+        return mockAnalysis;
     };
 }
 
