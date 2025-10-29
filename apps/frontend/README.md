@@ -175,26 +175,3 @@ apps/frontend/
 ## 스타일링
 
 Tailwind CSS를 사용하여 유틸리티 우선 스타일링과 사용자 정의 컴포넌트 및 반응형 디자인 패턴을 사용합니다.
-
-## Docker 실행 시 발생할 수 있는 문제
-
-Docker Compose로 실행할 때 다음과 같은 에러가 발생할 수 있습니다:
-
-### 권한 거부 에러 (Permission Denied)
-
-```
-Permission denied: '/etc/localstack/init/ready.d/init-aws.sh'
-```
-
-**해결 방법:**
-이 에러는 스크립트 파일에 실행 권한이 없어서 발생합니다. 다음 명령어로 권한을 부여하세요:
-
-```bash
-chmod +x /etc/localstack/init/ready.d/init-aws.sh
-```
-
-또는 Docker 컨테이너 내부에서:
-
-```bash
-docker exec -it <container_name> chmod +x /etc/localstack/init/ready.d/init-aws.sh
-```
