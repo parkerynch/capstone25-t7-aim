@@ -126,7 +126,6 @@ capstone25-t7-aim/
 │
 ├── docker-compose.yml     # Docker Compose 설정
 ├── package.json           # 루트 워크스페이스 설정
-├── cors.json              # CORS 설정
 ├── LICENSE
 ├── README.md
 └── GEMINI.md              # Gemini 관련 문서
