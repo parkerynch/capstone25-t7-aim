@@ -1,37 +1,13 @@
 import { useState, useEffect } from 'react';
-
-interface EnvVar {
-    key: string;
-    value: string;
-}
-
-interface Project {
-    id: string;
-    name: string;
-    status: '실행 중' | '중지됨' | '배포 중';
-    deployDate: string;
-    url: string;
-    originalFileName?: string;
-    fileSize?: number;
-    s3Url?: string;
-    envVars?: EnvVar[];
-}
-
-interface BuildSettings {
-    buildCommand: string;
-    outputDirectory: string;
-    installCommand: string;
-    runtime: string;
-    memory: string;
-    timeout: string;
-}
+import { Project } from '../types';
+import { BuildSettings } from '@shared/types';
+import { fetchProject } from '../services/project/projectApi';
 
 interface SettingsProps {
     project: Project | null;
 }
 
 export default function Settings({ project }: SettingsProps): JSX.Element {
-    const [envVars, setEnvVars] = useState<EnvVar[]>([]);
     const [buildSettings, setBuildSettings] = useState<BuildSettings>({
         buildCommand: 'npm run build',
         outputDirectory: 'dist',
@@ -40,7 +16,6 @@ export default function Settings({ project }: SettingsProps): JSX.Element {
         memory: '1024',
         timeout: '30',
     });
-
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -52,68 +27,64 @@ export default function Settings({ project }: SettingsProps): JSX.Element {
             return;
         }
 
-        setIsLoading(true);
+        const loadProjectSettings = async () => {
+            setIsLoading(true);
 
-        // localStorage에서 설정 불러오기
-        const savedSettings = localStorage.getItem(`project-settings-${project.id}`);
-
-        if (savedSettings) {
             try {
-                const parsed = JSON.parse(savedSettings);
-                console.log('저장된 설정 불러오기:', parsed);
+                // 백엔드에서 프로젝트 정보 가져오기
+                const projectData = await fetchProject(project.id);
 
-                if (parsed.envVars && Array.isArray(parsed.envVars)) {
-                    setEnvVars(parsed.envVars);
-                } else if (project.envVars && Array.isArray(project.envVars)) {
-                    // 프로젝트에 저장된 환경변수 사용
-                    setEnvVars(project.envVars);
-                } else {
-                    setEnvVars([]);
+                // 백엔드에서 가져온 buildSettings로 초기화
+                if (projectData.buildSettings) {
+                    setBuildSettings({
+                        buildCommand: projectData.buildSettings.buildCommand || 'npm run build',
+                        outputDirectory: projectData.buildSettings.outputDirectory || 'dist',
+                        installCommand: projectData.buildSettings.installCommand || 'npm install',
+                        runtime: projectData.buildSettings.runtime || 'nodejs20.x',
+                        memory: projectData.buildSettings.memory || '1024',
+                        timeout: projectData.buildSettings.timeout || '30',
+                    });
                 }
 
-                if (parsed.buildSettings) {
-                    setBuildSettings(parsed.buildSettings);
+                // localStorage에서 사용자 커스터마이징 설정 불러오기 (백엔드 데이터를 덮어씀)
+                const savedSettings = localStorage.getItem(`project-settings-${project.id}`);
+                if (savedSettings) {
+                    try {
+                        const parsed = JSON.parse(savedSettings);
+                        console.log('저장된 설정 불러오기:', parsed);
+
+                        if (parsed.buildSettings) {
+                            setBuildSettings(parsed.buildSettings);
+                        }
+                    } catch (error) {
+                        console.error('설정 로드 실패:', error);
+                    }
                 }
             } catch (error) {
-                console.error('설정 로드 실패:', error);
-                // 프로젝트에 저장된 환경변수로 폴백
-                if (project.envVars && Array.isArray(project.envVars)) {
-                    setEnvVars(project.envVars);
-                } else {
-                    setEnvVars([]);
+                console.error('프로젝트 정보 로드 실패:', error);
+
+                // 백엔드 로드 실패 시 localStorage에서만 불러오기
+                const savedSettings = localStorage.getItem(`project-settings-${project.id}`);
+                if (savedSettings) {
+                    try {
+                        const parsed = JSON.parse(savedSettings);
+                        if (parsed.buildSettings) {
+                            setBuildSettings(parsed.buildSettings);
+                        }
+                    } catch (error) {
+                        console.error('설정 로드 실패:', error);
+                    }
                 }
+            } finally {
+                setIsLoading(false);
             }
-        } else {
-            // 저장된 설정이 없으면 프로젝트의 초기 환경변수 사용
-            console.log('저장된 설정 없음, 프로젝트 환경변수 사용:', project.envVars);
-            if (project.envVars && Array.isArray(project.envVars)) {
-                setEnvVars(project.envVars);
-            } else {
-                setEnvVars([]);
-            }
-        }
+        };
 
-        setIsLoading(false);
-    }, [project?.id, project?.envVars]);
-
-    const handleEnvChange = (index: number, field: keyof EnvVar, value: string): void => {
-        const updated = [...envVars];
-        updated[index][field] = value;
-        setEnvVars(updated);
-    };
-
-    const handleDeleteEnv = (index: number): void => {
-        if (window.confirm('이 환경변수를 삭제하시겠습니까?')) {
-            setEnvVars(envVars.filter((_, i) => i !== index));
-        }
-    };
-
-    const handleAddEnv = (): void => {
-        setEnvVars([...envVars, { key: '', value: '' }]);
-    };
+        loadProjectSettings();
+    }, [project?.id]);
 
     const handleBuildSettingChange = (field: keyof BuildSettings, value: string): void => {
-        setBuildSettings(prev => ({
+        setBuildSettings((prev: BuildSettings) => ({
             ...prev,
             [field]: value,
         }));
@@ -125,37 +96,17 @@ export default function Settings({ project }: SettingsProps): JSX.Element {
             return;
         }
 
-        // 빈 환경변수 필터링
-        const validEnvVars = envVars.filter(env => env.key.trim() !== '');
-
         setIsSaving(true);
         setSaveMessage('');
 
         try {
             // localStorage에 설정 저장
             const settings = {
-                envVars: validEnvVars,
                 buildSettings,
                 updatedAt: new Date().toISOString(),
             };
 
             localStorage.setItem(`project-settings-${project.id}`, JSON.stringify(settings));
-
-            // 프로젝트 목록에도 환경변수 업데이트
-            const savedProjects = localStorage.getItem('deployedProjects');
-            if (savedProjects) {
-                const projects: Project[] = JSON.parse(savedProjects);
-                const updatedProjects = projects.map(p => {
-                    if (p.id === project.id) {
-                        return { ...p, envVars: validEnvVars };
-                    }
-                    return p;
-                });
-                localStorage.setItem('deployedProjects', JSON.stringify(updatedProjects));
-
-                // 커스텀 이벤트 발생
-                window.dispatchEvent(new Event('projectsUpdated'));
-            }
 
             console.log('설정 저장 완료:', settings);
 
@@ -215,86 +166,7 @@ export default function Settings({ project }: SettingsProps): JSX.Element {
             <div className="w-full">
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold mb-2">{project.name} - 프로젝트 설정</h1>
-                    <p className="text-gray-600">환경변수, 빌드 옵션, Lambda 런타임을 설정하세요.</p>
-                </div>
-
-                {/* 환경변수 섹션 */}
-                <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 className="text-lg font-semibold mb-1">
-                                환경변수
-                                <span className="ml-2 text-sm font-normal text-gray-500">({envVars.length}개)</span>
-                            </h2>
-                            <p className="text-sm text-gray-600">API_KEY, DB_URL 등 환경변수를 설정하세요</p>
-                        </div>
-                        <button
-                            onClick={handleAddEnv}
-                            className="bg-cyan-400 hover:bg-cyan-500 text-white font-medium py-2 px-4 rounded flex items-center gap-2 transition-colors"
-                        >
-                            <span className="text-xl">+</span>
-                            추가
-                        </button>
-                    </div>
-
-                    {envVars.length === 0 ? (
-                        <div className="text-center py-8 bg-white rounded-lg border-2 border-dashed border-gray-300">
-                            <svg
-                                className="w-12 h-12 text-gray-300 mx-auto mb-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={1.5}
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
-                            <p className="text-gray-500 font-medium">환경변수가 없습니다</p>
-                            <p className="text-sm text-gray-400 mt-1">추가 버튼을 눌러 환경변수를 설정하세요</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {envVars.map((env: EnvVar, index: number) => (
-                                <div key={index} className="flex gap-3 items-center">
-                                    <div className="flex-1 relative">
-                                        <input
-                                            type="text"
-                                            value={env.key}
-                                            onChange={e => handleEnvChange(index, 'key', e.target.value)}
-                                            placeholder="KEY (예: API_KEY)"
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded focus:outline-none focus:border-cyan-400 bg-white"
-                                        />
-                                    </div>
-                                    <div className="flex-1 relative">
-                                        <input
-                                            type="text"
-                                            value={env.value}
-                                            onChange={e => handleEnvChange(index, 'value', e.target.value)}
-                                            placeholder="VALUE (예: sk-xxxxx)"
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded focus:outline-none focus:border-cyan-400 bg-white"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={() => handleDeleteEnv(index)}
-                                        className="p-3 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
-                                        title="삭제"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                            />
-                                        </svg>
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <p className="text-gray-600">빌드 옵션과 Lambda 런타임을 설정하세요.</p>
                 </div>
 
                 {/* 빌드 & 런타임 섹션 */}

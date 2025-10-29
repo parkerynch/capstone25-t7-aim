@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import JSZip from 'jszip';
 import { useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
+import { createProject } from '../services/project/projectApi';
 
 interface FileUploadProps {}
 
@@ -127,63 +128,37 @@ function FileUpload({}: FileUploadProps) {
             if (!file) {
                 return;
             }
-            // 1. Get pre-signed URL from backend
-            const presignedUrlResponse = await fetch('/api/projects', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    fileName: file.name,
-                }),
+
+            // 1. Convert file to Base64
+            setUploadProgress(10);
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    // Remove data URL prefix (data:application/zip;base64,)
+                    const base64 = result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
             });
 
-            if (!presignedUrlResponse.ok) {
-                throw new Error('Failed to get pre-signed URL');
-            }
+            setUploadProgress(30);
 
-            const { signedUrl, key } = await presignedUrlResponse.json();
+            // 2. Upload file data to backend as JSON
+            const { projectId } = await createProject(file.name, projectName.trim(), base64Data);
 
-            // 2. Upload file to S3
-            await new Promise<any>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.upload.addEventListener('progress', e => {
-                    if (e.lengthComputable) {
-                        const uploadPercent = Math.round((e.loaded / e.total) * 100);
-                        setUploadProgress(uploadPercent);
-                    }
-                });
+            console.log('✅ Upload successful');
 
-                xhr.addEventListener('load', () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(xhr.response);
-                    } else {
-                        reject(new Error('Upload to S3 failed'));
-                    }
-                });
+            setUploadProgress(80);
 
-                xhr.open('PUT', signedUrl);
-                xhr.send(file);
-            });
+            setUploadProgress(100);
 
-            console.log('✅ Upload to S3 successful');
+            // 3. Navigate to project detail page directly
+            console.log('🚀 Navigating to project detail page:', projectId);
 
-            // 3. Navigate to the next page
-            const stateData = {
-                projectName,
-                s3Url: signedUrl,
-                s3Key: key,
-                fileName: file.name,
-                originalName: file.name,
-                fileSize: file.size,
-            };
-
-            console.log('🚀 Navigating to next page:', stateData);
-
-            sessionStorage.setItem('deploymentData', JSON.stringify(stateData));
             window.scrollTo(0, 0);
-            navigate('/envsetup', { state: stateData });
-
+            navigate(`/project/${projectId}`);
         } catch (error) {
             console.error('❌ Deployment error:', error);
             alert(`Deployment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -356,7 +331,7 @@ function FileUpload({}: FileUploadProps) {
                         : 'bg-[#2BCBE8CC] text-white hover:bg-[#1ba8c4]'
                 }`}
             >
-                {loading ? `S3 업로드 중... ${uploadProgress}%` : 'Start Deployment'}
+                {loading ? `배포 중... ${uploadProgress}%` : 'Start Deployment'}
             </button>
         </div>
     );

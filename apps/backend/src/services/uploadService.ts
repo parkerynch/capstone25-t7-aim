@@ -22,7 +22,7 @@ const s3Client = new S3Client({
 });
 
 export const generatePresignedUrl = async (fileName: string) => {
-    const key = `${uuidv4()}-${fileName}`;
+    const key = fileName; // 이미 UUID가 포함된 키를 사용
 
     const command = new PutObjectCommand({
         Bucket: S3_BUCKET,
@@ -37,4 +37,27 @@ export const generatePresignedUrl = async (fileName: string) => {
     const finalSignedUrl = isLocal ? signedUrl.replace('localstack:4566', 'localhost:4566') : signedUrl;
 
     return { signedUrl: finalSignedUrl, key };
+};
+
+export const uploadToS3 = async (base64Data: string, fileName: string) => {
+    const key = `${uuidv4()}-${fileName}`;
+
+    // Base64 데이터를 Buffer로 변환
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const command = new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: 'application/zip', // ZIP 파일로 가정
+    });
+
+    try {
+        await s3Client.send(command);
+        console.log(`✅ File uploaded to S3: ${key}`);
+        return { key };
+    } catch (error) {
+        console.error('❌ S3 upload failed:', error);
+        throw error;
+    }
 };

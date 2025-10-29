@@ -1,8 +1,8 @@
-import { Deployment } from '../models/deployment.model';
 import { Service } from '../models/service.model';
 import { Log } from '../models/log.model';
 import { generatePresignedUrl } from './uploadService';
 import axios from 'axios';
+import { IDeployment, Deployment } from '../models/deployment.model';
 
 const AIM_HELLO_API_URL = process.env.AIM_HELLO_API_URL || 'http://localhost:8000';
 
@@ -17,94 +17,135 @@ const AIM_HELLO_API_URL = process.env.AIM_HELLO_API_URL || 'http://localhost:800
  * - Job 타입으로 변경
  * - 작업 큐에서 Job 데이터 받기
  */
-export const processDeploymentJob = async (deploymentData: any) => {
-    const { _id, projectId, s3Key } = deploymentData;
-
-    const deployment = await Deployment.findById(_id);
-
-    if (!deployment) {
-        throw new Error(`Deployment ${_id} not found`);
-    }
+export const processDeploymentJob = async (deployment: IDeployment) => {
+    const { s3Key } = deployment;
 
     const log = async (message: string) => {
         const newLog = new Log({
-            deploymentId: deployment._id,
+            deploymentId: deployment._id as string,
             message,
         });
         await newLog.save();
-        console.log(`[Deployment ${deployment._id}] ${message}`);
+        console.log(`[Deployment ${deployment._id as string}] ${message}`);
     };
 
     try {
-        await log('Deployment process started.');
+        // File Upload 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'UPLOADING' });
+        const updatedDeployment1 = await Deployment.findById(deployment._id);
+        await log(`File Upload - currentStep set to: ${updatedDeployment1?.currentStep}`);
 
-        // 1. Get analysis from aim-hello-api
-        await log('Analyzing project...');
+        // Analyzing 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'ANALYZING' });
+        const updatedDeployment2 = await Deployment.findById(deployment._id);
+        await log(`Analyzing Code with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
         const { signedUrl } = await generatePresignedUrl(s3Key);
         const analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/analyze`, {
             s3Url: signedUrl,
         });
-        const analysis = analyzeResponse.data;
-        await log(`Analysis complete: ${JSON.stringify(analysis)}`);
+        const analysisResult = analyzeResponse.data;
+        await log(`AI Analysis complete: ${JSON.stringify(analysisResult)}`);
 
-        // 2. Deploy frontend
-        await log('Deploying frontend...');
-        const frontendService = new Service({
-            deploymentId: deployment._id,
-            type: 'FRONTEND',
-            status: 'DEPLOYING',
-        });
-        await frontendService.save();
+        // Check if refactoring was performed
+        if (analysisResult.status === 'refactoring_completed') {
+            await log('AI refactoring completed. Proceeding with deployment.');
+            // TODO: Download refactored ZIP from S3 and use it for deployment
+            // For now, use the refactored structure information
+        } else if (analysisResult.status === 'no_refactoring_needed') {
+            await log('No refactoring needed. Using original structure.');
+        }
 
-        // TODO: Implement actual frontend deployment logic
-        // 1. Download the project zip file from S3.
-        // 2. Unzip the file.
-        // 3. Navigate to the 'apps/frontend' directory.
-        // 4. Install dependencies using 'npm install'.
-        // 5. Build the React application using 'npm run build'.
-        // 6. Upload the 'build' directory to a static hosting service (e.g., AWS S3, Vercel, Netlify).
-        // 7. Get the URL of the deployed frontend service.
+        // Extract analysis data
+        const analysis = analysisResult.analysis || analysisResult;
 
-        frontendService.status = 'RUNNING';
-        frontendService.url = 'http://frontend-url.com'; // Replace with actual URL
-        await frontendService.save();
-        await log('Frontend deployed successfully.');
+        // Splitting 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'SPLITTING' });
+        const updatedDeployment3 = await Deployment.findById(deployment._id);
+        await log(`Splitting Frontend & Backend - currentStep set to: ${updatedDeployment3?.currentStep}`);
+        // This is a conceptual step, no actual code needed for this simulation
 
-        // 3. Deploy backend
-        await log('Deploying backend...');
+        // Deploying Backend 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'DEPLOYING_BACKEND' });
+        const updatedDeployment4 = await Deployment.findById(deployment._id);
+        await log(`Deploying Backend to AWS Lambda - currentStep set to: ${updatedDeployment4?.currentStep}`);
+
+        // TODO: Implement actual AWS Lambda deployment
+        // 1. Create Lambda function from backend code
+        // 2. Set up API Gateway for the Lambda
+        // 3. Configure environment variables
+        // For now, simulate deployment with LocalStack
+
+        const backendUrl = `https://${deployment._id}-backend.lambda-url.us-east-1.on.aws/`;
+        const backendFramework =
+            analysis.appType === 'backend-only'
+                ? 'Node.js'
+                : analysis.frameworks?.find((f: string) => f !== 'React') || 'Express.js';
+
         const backendService = new Service({
-            deploymentId: deployment._id,
+            deploymentId: deployment._id as string,
             type: 'BACKEND',
+            framework: backendFramework,
+            language: analysis.backend?.language || 'TypeScript',
+            url: backendUrl,
             status: 'DEPLOYING',
         });
         await backendService.save();
 
-        // TODO: Implement actual backend deployment logic
-        // 1. Download the project zip file from S3.
-        // 2. Unzip the file.
-        // 3. Navigate to the 'apps/backend' directory.
-        // 4. Create a Dockerfile if it doesn't exist.
-        // 5. Build a Docker image.
-        // 6. Push the Docker image to a container registry (e.g., Amazon ECR, Docker Hub).
-        // 7. Deploy the Docker image to a container orchestration service (e.g., Amazon ECS, Kubernetes).
-        // 8. Get the URL of the deployed backend service.
+        // Simulate deployment delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         backendService.status = 'RUNNING';
-        backendService.url = 'http://backend-url.com'; // Replace with actual URL
         await backendService.save();
-        await log('Backend deployed successfully.');
+        await log(`Backend deployed successfully at ${backendUrl}`);
 
-        deployment.status = 'SUCCESS';
-        await deployment.save();
+        // Deploying Frontend 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'DEPLOYING_FRONTEND' });
+        const updatedDeployment5 = await Deployment.findById(deployment._id);
+        await log(`Deploying Frontend to AWS S3 - currentStep set to: ${updatedDeployment5?.currentStep}`);
+
+        // TODO: Implement actual AWS S3 static website hosting
+        // 1. Build frontend application
+        // 2. Upload build artifacts to S3 bucket
+        // 3. Configure S3 for static website hosting
+        // 4. Set up CloudFront CDN (optional)
+        // For now, simulate deployment with LocalStack
+
+        const frontendUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
+        const frontendFramework =
+            analysis.appType === 'frontend-only'
+                ? 'React'
+                : analysis.frameworks?.find((f: string) => f === 'React') || 'React';
+
+        const frontendService = new Service({
+            deploymentId: deployment._id as string,
+            type: 'FRONTEND',
+            framework: frontendFramework,
+            language: analysis.frontend?.language || 'TypeScript',
+            url: frontendUrl,
+            status: 'DEPLOYING',
+        });
+        await frontendService.save();
+
+        // Simulate deployment delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        frontendService.status = 'RUNNING';
+        await frontendService.save();
+        await log(`Frontend deployed successfully at ${frontendUrl}`);
+
+        // Finalizing 단계
+        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'FINALIZING' });
+        const updatedDeployment6 = await Deployment.findById(deployment._id);
+        await log(`Finalizing Deployment - currentStep set to: ${updatedDeployment6?.currentStep}`);
+        // Deployment status update will be handled in queueService
         await log('Deployment completed successfully.');
     } catch (error) {
         console.error(error);
-        deployment.status = 'FAILED';
-        await deployment.save();
         if (error instanceof Error) {
             await log(`Deployment failed: ${error.message}`);
         } else {
             await log(`Deployment failed: ${String(error)}`);
         }
+        throw error; // Re-throw to let queueService handle status update
     }
 };

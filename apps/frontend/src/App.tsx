@@ -5,7 +5,6 @@ import ProjectPage from './pages/ProjectPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import DeployPage from './pages/DeployPage';
 import { Footer } from './components/Footer';
-import EnvSetupPage from './pages/EnvSetupPage';
 
 function App() {
     return (
@@ -17,7 +16,7 @@ function App() {
                     <Route path="/project" element={<ProjectPage />} />
                     <Route path="/project/:id" element={<ProjectDetailPage />} />
                     <Route path="/deploy" element={<DeployPage />} />
-                    <Route path="/:id" element={<EnvSetupPage />} />
+                    <Route path="/deploy/:deploymentId" element={<DeployPage />} />
                 </Routes>
             </div>
             <Footer />

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Dashboard from '../components/Dashboard';
 import Settings from '../components/Settings';
 import FileDetails from '../components/FileDetails';
 import BuildLogs from '../components/BuildLogs';
+import { Project } from '../types';
+import { fetchProject, deleteProject } from '../services/project/projectApi';
 
 type PageType = 'dashboard' | 'apikeys' | 'file' | 'buildlogs';
 
@@ -13,17 +15,6 @@ interface NavItem {
     icon?: string;
 }
 
-interface Project {
-    id: string;
-    name: string;
-    status: '실행 중' | '중지됨' | '배포 중';
-    deployDate: string;
-    url: string;
-    originalFileName?: string;
-    fileSize?: number;
-    s3Url?: string;
-}
-
 const NAV_ITEMS: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'apikeys', label: 'Settings' },
@@ -31,61 +22,69 @@ const NAV_ITEMS: NavItem[] = [
     { id: 'buildlogs', label: 'BuildLogs' },
 ];
 
+const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
+};
+
+const getStatusText = (status: 'analyzing' | 'deploying' | 'completed' | 'failed'): string => {
+    switch (status) {
+        case 'analyzing':
+            return '분석 중';
+        case 'deploying':
+            return '배포 중';
+        case 'completed':
+            return '완료됨';
+        case 'failed':
+            return '실패';
+        default:
+            return status;
+    }
+};
+
 export default function ProjectDetailPage() {
     const { id } = useParams<{ id: string }>();
-    const location = useLocation();
     const navigate = useNavigate();
-    
+
     const [page, setPage] = useState<PageType>('dashboard');
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // location.state에서 프로젝트 데이터 가져오기
-        if (location.state?.project) {
-            setProject(location.state.project);
-            setLoading(false);
-        } else if (id) {
-            // state가 없으면 localStorage에서 찾기
-            const savedProjects = localStorage.getItem('deployedProjects');
-            if (savedProjects) {
+        const loadProjectData = async () => {
+            if (id) {
                 try {
-                    const projects: Project[] = JSON.parse(savedProjects);
-                    const foundProject = projects.find(p => p.id === id);
-                    if (foundProject) {
-                        setProject(foundProject);
-                    } else {
-                        console.error('프로젝트를 찾을 수 없습니다.');
-                        alert('프로젝트를 찾을 수 없습니다.');
-                        navigate('/project');
-                    }
+                    const transformedProject = await fetchProject(id);
+                    setProject(transformedProject);
                 } catch (error) {
-                    console.error('프로젝트 데이터 로드 실패:', error);
+                    console.error('프로젝트 데이터를 가져올 수 없습니다.');
+                    alert('프로젝트 데이터를 가져올 수 없습니다.');
+                    navigate('/project');
+                } finally {
+                    setLoading(false);
                 }
             }
-            setLoading(false);
-        }
-    }, [id, location.state, navigate]);
+        };
 
-    const handleDelete = () => {
+        loadProjectData();
+    }, [id, navigate]);
+
+    const handleDelete = async () => {
         if (!project) return;
 
         if (window.confirm(`"${project.name}" 프로젝트를 정말 삭제하시겠습니까?`)) {
             try {
-                // localStorage에서 프로젝트 삭제
-                const savedProjects = localStorage.getItem('deployedProjects');
-                if (savedProjects) {
-                    const projects: Project[] = JSON.parse(savedProjects);
-                    const updatedProjects = projects.filter(p => p.id !== project.id);
-                    localStorage.setItem('deployedProjects', JSON.stringify(updatedProjects));
-                    
-                    // 커스텀 이벤트 발생
-                    window.dispatchEvent(new Event('projectsUpdated'));
-                    
-                    console.log('프로젝트 삭제 완료:', project.name);
-                    alert('프로젝트가 삭제되었습니다.');
-                    navigate('/project');
-                }
+                await deleteProject(project.id);
+                console.log('프로젝트 삭제 완료:', project.name);
+                alert('프로젝트가 삭제되었습니다.');
+                navigate('/project');
             } catch (error) {
                 console.error('프로젝트 삭제 실패:', error);
                 alert('프로젝트 삭제 중 오류가 발생했습니다.');
@@ -98,7 +97,7 @@ export default function ProjectDetailPage() {
             case '실행 중':
                 return 'bg-green-100 text-green-700';
             case '중지됨':
-                return 'bg-gray-200 text-gray-700';
+                return 'bg-red-100 text-red-700';
             case '배포 중':
                 return 'bg-blue-100 text-blue-700';
             default:
@@ -160,8 +159,10 @@ export default function ProjectDetailPage() {
                 <div className="flex mb-4 justify-between items-center">
                     <div className="flex items-center gap-4">
                         <h1 className="text-4xl font-bold">{project.name}</h1>
-                        <span className={`px-3 py-1 text-xs font-medium rounded ${getStatusColor(project.status)}`}>
-                            {project.status}
+                        <span
+                            className={`px-3 py-1 text-xs font-medium rounded ${getStatusColor(getStatusText(project.status))}`}
+                        >
+                            {getStatusText(project.status)}
                         </span>
                     </div>
                     <button
@@ -174,6 +175,60 @@ export default function ProjectDetailPage() {
 
                 {/* 프로젝트 정보 */}
                 <div className="space-y-3 text-md">
+                    {project.description && (
+                        <div className="flex items-start gap-2 text-gray-600">
+                            <svg className="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            <div>
+                                <span className="font-semibold">설명:</span>
+                                <p className="mt-1 text-sm">{project.description}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-gray-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                            />
+                        </svg>
+                        <span className="font-semibold">버전:</span>
+                        <span>{project.version || '1.0.0'}</span>
+                    </div>
+
+                    {project.tags && project.tags.length > 0 && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
+                            </svg>
+                            <span className="font-semibold">태그:</span>
+                            <div className="flex gap-1 flex-wrap">
+                                {project.tags.map((tag, index) => (
+                                    <span
+                                        key={index}
+                                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                         <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
@@ -192,11 +247,24 @@ export default function ProjectDetailPage() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <span className="font-semibold">마지막 수정:</span>
+                        <span>{formatDate(project.updatedAt.toISOString())}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-gray-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                             />
                         </svg>
                         <span className="font-semibold">배포일:</span>
-                        <span>{project.deployDate}</span>
+                        <span>{formatDate(project.uploadedAt.toISOString())}</span>
                     </div>
 
                     {project.originalFileName && (

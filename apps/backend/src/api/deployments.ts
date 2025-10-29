@@ -14,11 +14,18 @@ router.get('/deployments/:deploymentId', async (req, res) => {
             return res.status(404).json({ message: 'Deployment not found' });
         }
 
+        console.log('API - Raw deployment from DB:', deployment);
+        console.log('API - Deployment currentStep:', deployment.currentStep);
+        console.log('API - Deployment toObject():', deployment.toObject());
+
         const services = await Service.find({ deploymentId });
         const logs = await Log.find({ deploymentId }).sort({ timestamp: 1 });
 
         res.json({
-            deployment,
+            deployment: {
+                ...deployment.toObject(),
+                projectId: deployment.projectId,
+            },
             services,
             logs,
         });

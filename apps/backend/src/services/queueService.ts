@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from 'uuid';
-import { Deployment } from '../models/deployment.model';
+import { Deployment, IDeployment } from '../models/deployment.model';
+import { Project } from '../models/project.model';
 import { processDeploymentJob } from './deploymentWorker';
 
 /**
@@ -15,9 +15,7 @@ import { processDeploymentJob } from './deploymentWorker';
  * - 분산 시스템에서의 작업 스케줄링 개선
  */
 
-export const addDeploymentJob = async (data: { projectId: string; [key: string]: any }) => {
-    const jobId = uuidv4();
-
+export const addDeploymentJob = async (data: { projectId: string; s3Key: string }) => {
     // DB에 배포 작업 생성 (상태: 'PENDING')
     const deployment = await Deployment.create({
         status: 'PENDING',
@@ -27,30 +25,52 @@ export const addDeploymentJob = async (data: { projectId: string; [key: string]:
     // 비동기로 배포 작업 실행 (논블로킹)
     processDeploymentJobAsync(deployment);
 
-    return jobId;
+    return (deployment._id as string).toString();
 };
 
 // 비동기 작업 처리 (백그라운드)
-const processDeploymentJobAsync = async (deployment: any): Promise<void> => {
+const processDeploymentJobAsync = async (deployment: IDeployment): Promise<void> => {
     try {
         // 상태 업데이트: IN_PROGRESS
-        await Deployment.findByIdAndUpdate(deployment._id, { status: 'IN_PROGRESS' });
+        await Deployment.findByIdAndUpdate(deployment._id as string, {
+            status: 'IN_PROGRESS',
+            currentStep: 'UPLOADING', // 초기 단계 설정
+        });
+
+        // 프로젝트 상태도 업데이트: deploying
+        await Project.findByIdAndUpdate(deployment.projectId, {
+            status: 'deploying',
+            updatedAt: new Date(),
+        });
 
         // 배포 작업 실행
         await processDeploymentJob(deployment);
 
         // 상태 업데이트: SUCCESS
-        await Deployment.findByIdAndUpdate(deployment._id, {
+        await Deployment.findByIdAndUpdate(deployment._id as string, {
             status: 'SUCCESS',
+            updatedAt: new Date(),
+        });
+
+        // 프로젝트 상태도 업데이트: completed
+        await Project.findByIdAndUpdate(deployment.projectId, {
+            status: 'completed',
             updatedAt: new Date(),
         });
     } catch (error) {
         // 상태 업데이트: FAILED
-        await Deployment.findByIdAndUpdate(deployment._id, {
+        await Deployment.findByIdAndUpdate(deployment._id as string, {
             status: 'FAILED',
             updatedAt: new Date(),
         });
-        console.error(`Deployment ${deployment._id} has failed: ${(error as Error).message}`);
+
+        // 프로젝트 상태도 업데이트: failed
+        await Project.findByIdAndUpdate(deployment.projectId, {
+            status: 'failed',
+            updatedAt: new Date(),
+        });
+
+        console.error(`Deployment ${deployment._id as string} has failed: ${(error as Error).message}`);
     }
 };
 /**
