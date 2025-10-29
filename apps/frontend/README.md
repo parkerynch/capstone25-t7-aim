@@ -83,17 +83,78 @@ npm run lint
 
 ## 프로젝트 구조
 
+## 프로젝트 구조
+
 ```
-src/
-├── components/    # 재사용 가능한 UI 컴포넌트
-├── pages/         # 페이지 컴포넌트
-├── services/      # API 서비스 및 유틸리티
-├── types/         # TypeScript 타입 정의
-├── assets/        # 정적 자산
-├── App.tsx        # 메인 앱 컴포넌트
-├── main.tsx       # 진입점
-└── ...
+apps/frontend/
+├── src/
+│   ├── components/        # 재사용 가능한 UI 컴포넌트
+│   │   ├── BuildLogs.tsx      # 배포 로그 표시 컴포넌트
+│   │   ├── Dashboard.tsx      # 메인 대시보드
+│   │   ├── DeploymentPipeline.tsx  # 배포 파이프라인 시각화
+│   │   ├── FileDetails.tsx     # 파일 상세 정보
+│   │   ├── FileUpload.tsx      # 파일 업로드 인터페이스
+│   │   ├── Footer.tsx          # 푸터 컴포넌트
+│   │   ├── ProjectCard.tsx     # 프로젝트 카드
+│   │   ├── Settings.tsx        # 설정 페이지
+│   │   └── TopBar.tsx          # 상단 네비게이션 바
+│   │
+│   ├── pages/             # 페이지 컴포넌트
+│   │   ├── DeployPage.tsx      # 배포 페이지
+│   │   ├── ProjectDetailPage.tsx  # 프로젝트 상세 페이지
+│   │   ├── ProjectPage.tsx      # 프로젝트 목록 페이지
+│   │   └── UploadPage.tsx       # 파일 업로드 페이지
+│   │
+│   ├── services/          # API 서비스 및 통신 로직
+│   │   ├── deployment/
+│   │   │   └── deploymentApi.ts  # 배포 관련 API 호출
+│   │   └── project/
+│   │       └── projectApi.ts     # 프로젝트 관련 API 호출
+│   │
+│   ├── assets/            # 정적 자산
+│   │   └── react.svg      # React 로고
+│   │
+│   ├── App.tsx            # 메인 애플리케이션 컴포넌트
+│   ├── main.tsx           # React 애플리케이션 진입점
+│   ├── index.css          # 글로벌 스타일
+│   ├── types.ts           # TypeScript 타입 정의
+│   └── vite-env.d.ts      # Vite 환경 타입
+│
+├── public/                # 공개 정적 파일
+│   └── vite.svg           # Vite 로고
+│
+├── package.json           # 의존성 및 스크립트
+├── tsconfig.json          # TypeScript 설정
+├── tsconfig.build.json    # 빌드용 TypeScript 설정
+├── vite.config.ts         # Vite 설정
+├── tailwind.config.js     # Tailwind CSS 설정
+├── postcss.config.js      # PostCSS 설정
+├── jest.config.ts         # Jest 테스트 설정
+├── .env                   # 환경 변수
+├── .env.example           # 환경 변수 예제
+└── index.html             # HTML 템플릿
 ```
+
+### 주요 컴포넌트 설명
+
+- **`components/`** - UI 컴포넌트들
+    - `FileUpload.tsx` - 드래그 앤 드롭 파일 업로드
+    - `DeploymentPipeline.tsx` - 배포 진행 상태 시각화
+    - `BuildLogs.tsx` - 실시간 로그 스트리밍
+    - `ProjectCard.tsx` - 프로젝트 정보 카드
+
+- **`pages/`** - 라우팅 페이지들
+    - `ProjectPage.tsx` - 프로젝트 목록 및 생성
+    - `DeployPage.tsx` - 배포 설정 및 실행
+    - `ProjectDetailPage.tsx` - 프로젝트 상세 정보 및 로그
+
+- **`services/`** - 백엔드 API와의 통신 로직
+    - `deployment/deploymentApi.ts` - 배포 관련 API 호출
+    - `project/projectApi.ts` - 프로젝트 관리 API 호출
+
+- **스타일링**: Tailwind CSS를 사용한 유틸리티 기반 스타일링
+- **상태 관리**: React hooks를 통한 로컬 상태 관리
+- **API 통신**: Backend API와의 HTTP 통신
 
 ## 주요 컴포넌트
 

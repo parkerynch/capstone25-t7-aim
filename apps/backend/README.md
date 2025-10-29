@@ -104,14 +104,52 @@ npm run lint
 ## 프로젝트 구조
 
 ```
-src/
-├── api/           # API 라우트 핸들러
-├── models/        # Mongoose 모델
-├── services/      # 비즈니스 로직 서비스
-├── app.ts         # Express 앱 설정
-├── server.ts      # 서버 진입점
-└── ...
+apps/backend/
+├── src/
+│   ├── api/               # API 라우트 핸들러
+│   │   ├── deployments.ts # 배포 관련 API 엔드포인트
+│   │   └── projects.ts    # 프로젝트 관련 API 엔드포인트
+│   │
+│   ├── models/            # Mongoose 데이터 모델
+│   │   ├── deployment.model.ts  # 배포 모델
+│   │   ├── log.model.ts         # 로그 모델
+│   │   ├── project.model.ts     # 프로젝트 모델
+│   │   └── service.model.ts     # 서비스 모델
+│   │
+│   ├── services/          # 비즈니스 로직 서비스
+│   │   ├── deploymentWorker.ts  # 배포 처리 워커
+│   │   ├── queueService.ts      # 큐 관리 서비스
+│   │   └── uploadService.ts     # 파일 업로드 서비스
+│   │
+│   ├── app.ts             # Express 애플리케이션 설정
+│   ├── server.ts          # HTTP 서버 시작점
+│   └── index.ts           # 메인 진입점
+│
+├── package.json           # 의존성 및 스크립트
+├── tsconfig.json          # TypeScript 설정
+├── jest.config.ts         # Jest 테스트 설정
+├── nodemon.json           # Nodemon 개발 설정
+├── .env                   # 환경 변수
+├── .env.example           # 환경 변수 예제
+└── dist/                  # 컴파일된 JavaScript 파일
 ```
+
+### 주요 파일 설명
+
+- **`src/api/`** - REST API 엔드포인트들
+    - `deployments.ts` - 배포 생성, 조회, 상태 확인
+    - `projects.ts` - 프로젝트 CRUD 작업
+
+- **`src/models/`** - MongoDB 데이터 스키마
+    - `deployment.model.ts` - 배포 상태, 단계, 메타데이터
+    - `project.model.ts` - 프로젝트 정보 및 설정
+    - `log.model.ts` - 배포 로그 저장
+    - `service.model.ts` - 서비스 구성 정보
+
+- **`src/services/`** - 핵심 비즈니스 로직
+    - `queueService.ts` - 배포 작업 큐 관리 및 상태 업데이트
+    - `deploymentWorker.ts` - 배포 파이프라인 실행 (업로드 → 분석 → 분할 → 배포)
+    - `uploadService.ts` - S3/LocalStack 파일 업로드 처리
 
 ## 환경 변수
 
