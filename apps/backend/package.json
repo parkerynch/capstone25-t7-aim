@@ -20,7 +20,7 @@
         "dotenv": "^17.2.3",
         "express": "^4.18.3",
         "mongoose": "^8.19.1",
-        "shared": "workspace:*",
+        "shared": "file:../../packages/shared",
         "uuid": "^13.0.0"
     },
     "devDependencies": {
