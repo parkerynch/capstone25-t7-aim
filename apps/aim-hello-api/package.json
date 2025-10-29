@@ -16,6 +16,9 @@
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
+        "@types/jszip": "^3.4.0",
+        "axios": "^1.12.2",
+        "jszip": "^3.10.1",
         "lemon-core": "^4.0.7"
     },
     "devDependencies": {

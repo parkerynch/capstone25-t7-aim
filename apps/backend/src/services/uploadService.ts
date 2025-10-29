@@ -1,5 +1,5 @@
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
 const S3_BUCKET = process.env.S3_BUCKET || 'aim-deploy-bucket';
@@ -20,24 +20,6 @@ const s3Client = new S3Client({
         forcePathStyle: true, // S3 경로 스타일을 강제 (LocalStack에 필요)
     }),
 });
-
-export const generatePresignedUrl = async (fileName: string) => {
-    const key = fileName; // 이미 UUID가 포함된 키를 사용
-
-    const command = new PutObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: key,
-    });
-
-    const signedUrl = await getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
-    });
-
-    // LocalStack이 생성한 URL(localhost:4566)을 클라이언트가 접근할 수 있도록 수정
-    const finalSignedUrl = isLocal ? signedUrl.replace('localstack:4566', 'localhost:4566') : signedUrl;
-
-    return { signedUrl: finalSignedUrl, key };
-};
 
 export const uploadToS3 = async (base64Data: string, fileName: string) => {
     const key = `${uuidv4()}-${fileName}`;
@@ -60,4 +42,21 @@ export const uploadToS3 = async (base64Data: string, fileName: string) => {
         console.error('❌ S3 upload failed:', error);
         throw error;
     }
+};
+
+export const generateReadOnlyUrl = async (s3Key: string) => {
+    const command = new GetObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: s3Key,
+    });
+
+    // 읽기용 URL 생성
+    const signedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 3600, // 1시간 동안 유효
+    });
+
+    // LocalStack URL 수정
+    const finalSignedUrl = isLocal ? signedUrl.replace('localstack:4566', 'localhost:4566') : signedUrl;
+
+    return { signedUrl: finalSignedUrl };
 };

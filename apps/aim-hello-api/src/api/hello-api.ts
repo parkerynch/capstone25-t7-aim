@@ -10,7 +10,7 @@
  */
 import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'lemon-core';
 import { Model, TestModel } from '../service/model';
-import { HelloService } from '../service/service';
+import { HelloService, GeminiService } from '../service/service';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -34,6 +34,9 @@ export class HelloAPIController extends GeneralWEBController {
         },
     ];
 
+    /** Gemini service for AI refactoring */
+    private geminiService: GeminiService;
+
     /**
      * default constructor.
      */
@@ -43,6 +46,7 @@ export class HelloAPIController extends GeneralWEBController {
 
         const tableName = $U.env('MY_DYNAMO_TABLE');
         this.service = service ?? new HelloService(tableName);
+        this.geminiService = new GeminiService();
         _log(NS, `> tableName = ${tableName}`);
     }
 
@@ -180,56 +184,16 @@ export class HelloAPIController extends GeneralWEBController {
 
         _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
 
-        // 1. Download the file from S3 (skip for now)
-        // ... existing download code ...
+        try {
+            // Call AI refactoring service
+            const result = await this.geminiService.refactorCode(s3Url);
+            _log(NS, `[DEBUG] Refactoring completed: ${result.status}`);
 
-        // 2. Mock analysis response for deployment pipeline testing
-        const analysis = {
-            needsRefactoring: true,
-            appType: 'fullstack',
-            frameworks: ['React', 'Express'],
-            refactoringPlan: 'Split single app into frontend/backend structure',
-        };
-
-        // 3. Return mock refactored structure
-        const refactoredStructure = {
-            apps: {
-                frontend: {
-                    files: {
-                        'package.json': JSON.stringify(
-                            {
-                                name: 'frontend',
-                                version: '1.0.0',
-                                scripts: { start: 'react-scripts start' },
-                            },
-                            null,
-                            2,
-                        ),
-                    },
-                },
-                backend: {
-                    files: {
-                        'package.json': JSON.stringify(
-                            {
-                                name: 'backend',
-                                version: '1.0.0',
-                                scripts: { start: 'node src/server.js' },
-                            },
-                            null,
-                            2,
-                        ),
-                    },
-                },
-            },
-        };
-
-        // Return success response for deployment pipeline testing
-        return {
-            analysis,
-            refactoredStructure,
-            status: 'refactoring_completed',
-            message: 'AI refactoring completed. Ready for deployment.',
-        };
+            return result;
+        } catch (error) {
+            _log(NS, `[ERROR] Refactoring failed: ${error}`);
+            throw error;
+        }
     };
 }
 

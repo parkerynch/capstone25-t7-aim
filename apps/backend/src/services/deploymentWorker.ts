@@ -1,6 +1,6 @@
 import { Service } from '../models/service.model';
 import { Log } from '../models/log.model';
-import { generatePresignedUrl } from './uploadService';
+import { generateReadOnlyUrl } from './uploadService';
 import axios from 'axios';
 import { IDeployment, Deployment } from '../models/deployment.model';
 
@@ -29,6 +29,10 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         console.log(`[Deployment ${deployment._id as string}] ${message}`);
     };
 
+    // Initialize framework variables
+    const frontendFramework: string | null = null;
+    const backendFramework: string | null = null;
+
     try {
         // File Upload 단계
         await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'UPLOADING' });
@@ -39,7 +43,12 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'ANALYZING' });
         const updatedDeployment2 = await Deployment.findById(deployment._id);
         await log(`Analyzing Code with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
-        const { signedUrl } = await generatePresignedUrl(s3Key);
+
+        // Generate pre-signed URL for AI analysis service
+        const { signedUrl } = await generateReadOnlyUrl(s3Key);
+        await log(`Generated pre-signed URL for AI analysis`);
+
+        // Send pre-signed URL to AI analysis service
         const analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/analyze`, {
             s3Url: signedUrl,
         });
@@ -49,8 +58,10 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Check if refactoring was performed
         if (analysisResult.status === 'refactoring_completed') {
             await log('AI refactoring completed. Proceeding with deployment.');
+            // Use the refactored ZIP from newS3Key
+            const refactoredS3Key = analysisResult.newS3Key;
+            await log(`Using refactored ZIP: ${refactoredS3Key}`);
             // TODO: Download refactored ZIP from S3 and use it for deployment
-            // For now, use the refactored structure information
         } else if (analysisResult.status === 'no_refactoring_needed') {
             await log('No refactoring needed. Using original structure.');
         }
@@ -76,15 +87,10 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // For now, simulate deployment with LocalStack
 
         const backendUrl = `https://${deployment._id}-backend.lambda-url.us-east-1.on.aws/`;
-        const backendFramework =
-            analysis.appType === 'backend-only'
-                ? 'Node.js'
-                : analysis.frameworks?.find((f: string) => f !== 'React') || 'Express.js';
-
         const backendService = new Service({
             deploymentId: deployment._id as string,
             type: 'BACKEND',
-            framework: backendFramework,
+            framework: backendFramework || 'Express.js',
             language: analysis.backend?.language || 'TypeScript',
             url: backendUrl,
             status: 'DEPLOYING',
@@ -111,15 +117,10 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // For now, simulate deployment with LocalStack
 
         const frontendUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
-        const frontendFramework =
-            analysis.appType === 'frontend-only'
-                ? 'React'
-                : analysis.frameworks?.find((f: string) => f === 'React') || 'React';
-
         const frontendService = new Service({
             deploymentId: deployment._id as string,
             type: 'FRONTEND',
-            framework: frontendFramework,
+            framework: frontendFramework || 'React',
             language: analysis.frontend?.language || 'TypeScript',
             url: frontendUrl,
             status: 'DEPLOYING',
