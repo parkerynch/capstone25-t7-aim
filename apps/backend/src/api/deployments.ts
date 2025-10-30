@@ -35,4 +35,31 @@ router.get('/deployments/:deploymentId', async (req, res) => {
     }
 });
 
+router.get('/deployments/:deploymentId/status', async (req, res) => {
+    const { deploymentId } = req.params;
+
+    try {
+        const deployment = await Deployment.findById(deploymentId).select(
+            'status currentStep projectId frontendUrl backendUrl',
+        );
+        if (!deployment) {
+            return res.status(404).json({ message: 'Deployment not found' });
+        }
+
+        console.log('Status API - Deployment status:', deployment.status);
+        console.log('Status API - Current step:', deployment.currentStep);
+
+        res.json({
+            status: deployment.status,
+            currentStep: deployment.currentStep,
+            projectId: deployment.projectId.toString(),
+            frontendUrl: deployment.frontendUrl,
+            backendUrl: deployment.backendUrl,
+        });
+    } catch (error) {
+        console.error('Status check error:', error);
+        res.status(500).json({ message: 'Error getting deployment status' });
+    }
+});
+
 export default router;

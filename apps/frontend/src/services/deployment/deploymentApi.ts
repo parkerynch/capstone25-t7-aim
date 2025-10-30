@@ -1,6 +1,15 @@
 import { DeploymentResponse } from '@shared/types';
 import { Deployment } from '../../types';
 
+// 상태 체크 API 응답 타입
+export interface DeploymentStatusResponse {
+    status: 'PENDING' | 'IN_PROGRESS' | 'SUCCESS' | 'FAILED';
+    currentStep?: 'UPLOADING' | 'ANALYZING' | 'SPLITTING' | 'DEPLOYING_BACKEND' | 'DEPLOYING_FRONTEND' | 'FINALIZING';
+    projectId: string;
+    frontendUrl?: string;
+    backendUrl?: string;
+}
+
 // API 응답을 내부 타입으로 변환하는 유틸리티 함수들
 export function convertDeploymentResponse(apiDeployment: DeploymentResponse): Deployment {
     console.log('API Deployment Project ID:', apiDeployment);
@@ -11,6 +20,8 @@ export function convertDeploymentResponse(apiDeployment: DeploymentResponse): De
         currentStep: apiDeployment.currentStep,
         frontendUrl: apiDeployment.frontendUrl,
         backendUrl: apiDeployment.backendUrl,
+        deployedUrl: apiDeployment.frontendUrl || apiDeployment.backendUrl, // deployedUrl로 매핑
+        url: apiDeployment.frontendUrl || apiDeployment.backendUrl, // url로 매핑
         errorMessage: apiDeployment.errorMessage,
         startedAt: new Date(apiDeployment.startedAt),
         completedAt: apiDeployment.completedAt ? new Date(apiDeployment.completedAt) : undefined,
@@ -30,4 +41,13 @@ export async function fetchDeployment(
         deployment: convertDeploymentResponse(data.deployment),
         logs: data.logs,
     };
+}
+
+// 상태 체크 전용 API - 배포 상태만 빠르게 확인
+export async function fetchDeploymentStatus(deploymentId: string): Promise<DeploymentStatusResponse> {
+    const response = await fetch(`/api/deployments/${deploymentId}/status`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch deployment status');
+    }
+    return await response.json();
 }
