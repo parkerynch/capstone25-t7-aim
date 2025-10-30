@@ -10,7 +10,8 @@
  */
 import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'lemon-core';
 import { Model, TestModel } from '../service/model';
-import { HelloService, GeminiService } from '../service/service';
+import { HelloService } from '../service/service';
+import { RefactoringService } from '../service/refactoring-service';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -34,8 +35,8 @@ export class HelloAPIController extends GeneralWEBController {
         },
     ];
 
-    /** Gemini service for AI refactoring */
-    private geminiService: GeminiService;
+    /** Refactoring service for AI-powered code refactoring */
+    private refactoringService: RefactoringService;
 
     /**
      * default constructor.
@@ -46,7 +47,7 @@ export class HelloAPIController extends GeneralWEBController {
 
         const tableName = $U.env('MY_DYNAMO_TABLE');
         this.service = service ?? new HelloService(tableName);
-        this.geminiService = new GeminiService();
+        this.refactoringService = new RefactoringService();
         _log(NS, `> tableName = ${tableName}`);
     }
 
@@ -186,7 +187,7 @@ export class HelloAPIController extends GeneralWEBController {
 
         try {
             // Call AI refactoring service
-            const result = await this.geminiService.refactorCode(s3Url);
+            const result = await this.refactoringService.refactorCode(s3Url);
             _log(NS, `[DEBUG] Refactoring completed: ${result.status}`);
 
             return result;

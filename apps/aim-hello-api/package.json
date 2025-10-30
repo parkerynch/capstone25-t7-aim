@@ -15,6 +15,7 @@
         "test:watch": "jest --config=jest.config.json --watchAll"
     },
     "dependencies": {
+        "@anthropic-ai/sdk": "^0.68.0",
         "@google/generative-ai": "^0.24.1",
         "@types/jszip": "^3.4.0",
         "axios": "^1.12.2",
