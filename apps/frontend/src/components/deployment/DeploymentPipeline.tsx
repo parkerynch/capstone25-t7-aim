@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { fetchDeployment } from '../services/deployment/deploymentApi';
-import { Deployment } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { fetchDeployment } from '../../services/deployment/deploymentApi';
+import { Deployment } from '../../types';
 
 interface PipelineStep {
     id: number;
@@ -28,6 +28,9 @@ export default function DeploymentPipeline({
     initialLogs,
 }: DeploymentPipelineProps): JSX.Element {
     const { deploymentId } = useParams();
+    const navigate = useNavigate();
+    const [deployedUrl, setDeployedUrl] = useState('');
+    const [showModal, setShowModal] = useState(false);
 
     // 초기 상태는 모두 'pending'으로 설정
     const [steps, setSteps] = useState<PipelineStep[]>([
@@ -148,7 +151,13 @@ export default function DeploymentPipeline({
                     setLogs(logsData.map((log: { message: string }) => log.message));
                 }
 
-                // 배포 완료/실패 시 추가 처리 (필요시 구현)
+                // ✅ SUCCESS 상태일 때 모달 표시 및 URL 설정
+                if (overallStatus === 'SUCCESS') {
+                    // deployment 객체에서 URL 가져오기 (필드명은 백엔드 응답에 따라 조정)
+                    const url = deployment.url || deployment.deployedUrl || `https://${deployment.projectName}.app`;
+                    setDeployedUrl(url);
+                    setShowModal(true);
+                }
             }
         };
 
@@ -159,6 +168,17 @@ export default function DeploymentPipeline({
     }, [deploymentId, initialDeployment, initialLogs]); // 폴링 제거로 isDeploymentComplete 의존성 제거
 
     const progressPercent = (steps.filter(s => s.status === 'completed').length / steps.length) * 100;
+
+    const handleVisitSite = () => {
+        window.open(deployedUrl, '_blank');
+        setShowModal(false);
+    };
+
+    const handleGoToProject = () => {
+        setShowModal(false);
+        window.scrollTo(0, 0);
+        navigate('/project');
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-b p-10">
@@ -270,6 +290,96 @@ export default function DeploymentPipeline({
                         ))}
                     </div>
                 </motion.div>
+                <AnimatePresence>
+                    {showModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowModal(false)}
+                                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            />
+
+                            {/* Modal */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                transition={{ type: 'spring', duration: 0.5 }}
+                                className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8"
+                            >
+                                {/* Close Button */}
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                                >
+                                    ✕
+                                </button>
+
+                                {/* Success Icon */}
+                                <div className="flex justify-center mb-6">
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                                        className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg"
+                                    >
+                                        <span className="text-4xl">🎉</span>
+                                    </motion.div>
+                                </div>
+
+                                {/* Title */}
+                                <h2 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                                    Congratulation!
+                                </h2>
+                                <p className="text-center text-gray-600 mb-6">Your Project is deployed successfully!</p>
+
+                                {/* URL Display */}
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Deployed URL:
+                                    </label>
+                                    <div className="flex items-center gap-2 p-4 bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-blue-100 rounded-xl">
+                                        <span className="flex-1 text-sm font-mono text-blue-600 truncate">
+                                            {deployedUrl}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(deployedUrl);
+                                            }}
+                                            className="px-4 py-2 text-sm bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors font-medium"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="space-y-3">
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={handleVisitSite}
+                                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
+                                    >
+                                        Go to Deployed Url
+                                    </motion.button>
+
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={handleGoToProject}
+                                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
+                                    >
+                                        Go to Projects
+                                    </motion.button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
 
                 {/* ---- Bottom: Logs ---- */}
                 <motion.div

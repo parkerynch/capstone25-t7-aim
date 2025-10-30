@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Project } from '../types';
-import { fetchProjects, deleteProject } from '../services/project/projectApi';
+import { Project } from '../../types';
+import { fetchProjects, deleteProject } from '../../services/project/projectApi';
 
 export function ProjectCard() {
     const [projects, setProjects] = useState<Project[]>([]);
@@ -184,9 +184,9 @@ export function ProjectCard() {
                         state={{ project }}
                         className="p-6 shadow-md rounded-lg border hover:shadow-lg transition-all bg-white hover:border-cyan-200"
                     >
-                        <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <div className={`w-3 h-3 rounded-full mt-1.5 ${getStatusColor(project.status)}`} />
+                                <div className={`w-3 h-3 rounded-full ${getStatusColor(project.status)}`} />
                                 <div className="flex flex-col gap-2">
                                     <div className="flex flex-row gap-4 items-center">
                                         <h4 className="mb-1 font-semibold text-2xl">{project.name}</h4>
@@ -195,24 +195,6 @@ export function ProjectCard() {
                                         >
                                             {getStatusText(project.status)}
                                         </span>
-                                    </div>
-                                    {/* 배포 상태 표시 */}
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className={`w-2 h-2 rounded-full ${getDeploymentStatusColor(
-                                                project.latestDeployment,
-                                            )}`}
-                                        />
-                                        <span
-                                            className={`px-2 text-xs rounded font-medium ${getDeploymentBadgeColor(
-                                                project.latestDeployment,
-                                            )}`}
-                                        >
-                                            {getDeploymentStatusText(project.latestDeployment)}
-                                        </span>
-                                        {!project.latestDeployment && (
-                                            <span className="text-xs text-gray-400">(배포 시작 전)</span>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -238,7 +220,7 @@ export function ProjectCard() {
                                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                     />
                                 </svg>
-                                <span>업로드일: {formatDate(project.uploadedAt.toDateString())}</span>
+                                <span>배포일 : {formatDate(project.uploadedAt.toDateString())}</span>
                             </div>
 
                             <div className="flex items-center gap-2 text-sm text-gray-500">

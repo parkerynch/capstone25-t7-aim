@@ -1,4 +1,4 @@
-import { Project } from '../types';
+import { Project } from '../../types';
 
 interface BuildLogsProps {
     project: Project | null;
@@ -32,41 +32,43 @@ export default function BuildLogs({ project }: BuildLogsProps) {
         <div className="space-y-6">
             {/* 빌드 로그 헤더 */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">빌드 로그</h2>
-                <p className="text-gray-600 mb-4">
-                    프로젝트 "{project.name}"의 빌드 및 배포 로그를 확인할 수 있습니다.
-                </p>
-
-                {/* 배포 상태 표시 */}
-                <div className="flex items-center space-x-2 mb-4">
-                    <div
-                        className={`w-3 h-3 rounded-full ${
-                            project.status === 'completed'
-                                ? 'bg-green-500'
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Build Logs</h2>
+                <div className='flex flex-row justify-between'>
+                    <p className="text-gray-600 ">
+                        프로젝트 "{project.name}"의 빌드 및 배포 로그를 확인할 수 있습니다.
+                    </p>
+                    {/* 배포 상태 표시 */}
+                    <div className="flex items-center space-x-2 ">
+                        <div
+                            className={`w-3 h-3 rounded-full ${
+                                project.status === 'completed'
+                                    ? 'bg-green-500'
+                                    : project.status === 'failed'
+                                      ? 'bg-red-500'
+                                      : project.status === 'deploying'
+                                        ? 'bg-blue-500'
+                                        : 'bg-yellow-500'
+                            }`}
+                        />
+                        <span className="text-gray-900 font-medium">
+                            {project.status === 'completed'
+                                ? '배포 완료'
                                 : project.status === 'failed'
-                                  ? 'bg-red-500'
+                                  ? '배포 실패'
                                   : project.status === 'deploying'
-                                    ? 'bg-blue-500'
-                                    : 'bg-yellow-500'
-                        }`}
-                    />
-                    <span className="text-gray-900 font-medium">
-                        {project.status === 'completed'
-                            ? '배포 완료'
-                            : project.status === 'failed'
-                              ? '배포 실패'
-                              : project.status === 'deploying'
-                                ? '배포 중'
-                                : '분석 중'}
-                    </span>
+                                    ? '배포 중'
+                                    : '분석 중'}
+                        </span>
+                    </div>
                 </div>
+
+                
             </div>
 
             {/* 로그 표시 영역 - 퍼블리싱 상태 */}
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">실시간 로그</h3>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">실시간 모니터링</span>
+                    <h3 className="text-xl font-semibold text-gray-900">Realtime Logs</h3>
                 </div>
 
                 {/* 로그 콘솔 스타일 영역 */}

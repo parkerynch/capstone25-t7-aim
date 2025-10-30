@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { TopBar } from './components/TopBar';
+import { TopBar } from './components/layout/TopBar';
 import UploadPage from './pages/UploadPage';
 import ProjectPage from './pages/ProjectPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import DeployPage from './pages/DeployPage';
-import { Footer } from './components/Footer';
+import { Footer } from './components/layout/Footer';
 
 function App() {
     return (

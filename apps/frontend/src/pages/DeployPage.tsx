@@ -1,4 +1,4 @@
-import DeploymentPipeline from '../components/DeploymentPipeline';
+import DeploymentPipeline from '../components/deployment/DeploymentPipeline';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Project, Deployment } from '../types';
@@ -67,12 +67,6 @@ export default function DeployPage() {
     return (
         <div className="flex flex-col items-center justify-center w-full pt-10">
             <div className="relative w-full max-w-7xl mx-auto px-10 mb-4">
-                <button
-                    onClick={() => navigate(`/project/${project?.id}`)}
-                    className="absolute left-0 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center gap-2"
-                >
-                    ← Back to Project
-                </button>
                 <div className="text-center font-semibold text-3xl">Deployment Pipeline Status</div>
             </div>
 

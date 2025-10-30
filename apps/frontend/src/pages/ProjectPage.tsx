@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProjectCard } from '../components/ProjectCard';
+import { ProjectCard } from '../components/project/ProjectCard';
 
 // 1. 라우트 경로를 상수로 관리하여 오타를 방지하고 유지보수성을 높입니다.
 const ROUTES = {

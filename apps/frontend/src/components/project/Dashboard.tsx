@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Project } from '../types';
+import { Project } from '../../types';
 
 interface StatCard {
     icon: string;
@@ -90,7 +90,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 {/* 헤더 */}
                 <div className="mb-8 flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">실시간 모니터링</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Realtime-Monitoring</h1>
                         <p className="text-gray-600">배포된 AI Agent의 성능 및 상태 지표</p>
                     </div>
 
@@ -98,9 +98,9 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                     {project?.latestDeployment && project.latestDeployment.status !== 'PENDING' && (
                         <button
                             onClick={handleViewDeploymentStatus}
-                            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-lg font-semibold shadow-sm hover:shadow-xl transition-all duration-200 hover:scale-105"
                         >
-                            🚀 Deployment Pipeline Status
+                            Re-Deploy
                         </button>
                     )}
                 </div>
@@ -110,7 +110,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                     {statCards.map((card: StatCard, index: number) => (
                         <div
                             key={index}
-                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            className="bg-gray-100 rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
                         >
                             {/* 아이콘 */}
                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4 text-2xl">
@@ -143,7 +143,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                         {systemStats.map((stat: SystemStat, index: number) => (
                             <div key={index}>
                                 <p className="text-sm text-gray-600 mb-2">{stat.label}</p>
-                                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
                             </div>
                         ))}
                     </div>

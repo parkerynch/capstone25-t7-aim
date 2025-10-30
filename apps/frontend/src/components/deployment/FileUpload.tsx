@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { createProject } from '../services/project/projectApi';
+import { createProject, fetchProject } from '../../services/project/projectApi';
 
 interface FileUploadProps {}
 
@@ -151,14 +151,20 @@ function FileUpload({}: FileUploadProps) {
             console.log('✅ Upload successful');
 
             setUploadProgress(80);
-
             setUploadProgress(100);
 
-            // 3. Navigate to project detail page directly
-            console.log('🚀 Navigating to project detail page:', projectId);
+            // Fetch latest deployment ID from project data
+            const projectData = await fetchProject(projectId);
+            const latestDeploymentId = projectData?.latestDeployment?.id;
 
-            window.scrollTo(0, 0);
-            navigate(`/project/${projectId}`);
+            if (!latestDeploymentId) {
+                throw new Error('Failed to fetch latest deployment ID.');
+            }
+
+            // Navigate to DeployPage with latest deployment ID
+            navigate(`/deploy/${latestDeploymentId}`, {
+                state: { projectId, latestDeploymentId },
+            });
         } catch (error) {
             console.error('❌ Deployment error:', error);
             alert(`Deployment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

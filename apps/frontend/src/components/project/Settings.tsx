@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Project } from '../types';
+import { Project } from '../../types';
 import { BuildSettings } from '@shared/types';
-import { fetchProject } from '../services/project/projectApi';
+import { fetchProject } from '../../services/project/projectApi';
 
 interface SettingsProps {
     project: Project | null;
@@ -165,7 +165,6 @@ export default function Settings({ project }: SettingsProps): JSX.Element {
         <div className="bg-white p-8 rounded-lg shadow-lg">
             <div className="w-full">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold mb-2">{project.name} - 프로젝트 설정</h1>
                     <p className="text-gray-600">빌드 옵션과 Lambda 런타임을 설정하세요.</p>
                 </div>
 

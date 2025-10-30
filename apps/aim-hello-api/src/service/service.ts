@@ -123,14 +123,8 @@ export default new HelloService();
 
 export class GeminiService {
     private genAI: GoogleGenerativeAI;
-
-    // CRITICAL ISSUES TO ADDRESS:
-    // 1. AI 프롬프트 구체화 부족 → JSON 응답 형식 강제 필요 (부분 완료: buildRefactoringPrompt 개선)
-    // 2. JSON 파싱 실패 처리 미흡 → 재시도 로직 또는 사용자 개입 필요
-    // 3. Fallback 분류 로직 부정확 → AI 의존도 높이거나 완전 제거 고려
-    // 4. 프레임워크 감지 정확성 낮음 → 패턴 매칭 및 우선순위 로직 개선 필요
-    //
-    // 현재 우선순위: AI 응답 신뢰성 확보 → Fallback 로직 개선 → 프레임워크 감지 강화
+    private systemPrompt: string;
+    private userPromptTemplate: string;
 
     constructor() {
         const apiKey = process.env.GEMINI_API_KEY;
@@ -138,6 +132,31 @@ export class GeminiService {
             throw new Error('GEMINI_API_KEY is not set');
         }
         this.genAI = new GoogleGenerativeAI(apiKey);
+
+        // Load prompts from files
+        this.loadPrompts();
+    }
+
+    /**
+     * Load system and user prompt templates from files
+     */
+    private loadPrompts(): void {
+        try {
+            const promptsDir = path.join(process.cwd(), 'prompts');
+
+            // Load system prompt
+            const systemPromptPath = path.join(promptsDir, 'system.txt');
+            this.systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
+            console.log('✅ System prompt loaded successfully');
+
+            // Load user prompt template
+            const userPromptPath = path.join(promptsDir, 'user.txt');
+            this.userPromptTemplate = fs.readFileSync(userPromptPath, 'utf-8');
+            console.log('✅ User prompt template loaded successfully');
+        } catch (error) {
+            console.error('❌ Failed to load prompt files:', error);
+            throw new Error('Failed to load prompt templates. Ensure prompts/system.txt and prompts/user.txt exist.');
+        }
     }
 
     public getClient() {
@@ -227,33 +246,29 @@ export class GeminiService {
         };
     }
 
+    /**
+     * Build refactoring prompt using loaded templates
+     */
     private buildRefactoringPrompt(fileStructure: Record<string, string>): string {
-        const files = Object.keys(fileStructure).join(', ');
-        return `
-You are an expert software architect. Analyze the following project structure and refactor it into a modern fullstack application with separate frontend and backend.
+        // Build file structure representation
+        const fileStructureText = Object.entries(fileStructure)
+            .map(([filePath, content]) => {
+                // Limit content preview to first 50 lines
+                const lines = content.split('\n').slice(0, 50);
+                const preview = lines.join('\n');
+                const truncated = lines.length < content.split('\n').length ? '\n... (truncated)' : '';
 
-Project files: ${files}
+                return `## File: ${filePath}\n\`\`\`\n${preview}${truncated}\n\`\`\`\n`;
+            })
+            .join('\n');
 
-IMPORTANT: You MUST respond with a valid JSON object in the following exact format:
-{
-  "fileMappings": {
-    "path/to/file1": "frontend",
-    "path/to/file2": "backend",
-    "path/to/file3": "frontend"
-  },
-  "frameworks": {
-    "frontend": {"framework": "React", "language": "TypeScript"},
-    "backend": {"framework": "Express.js", "language": "TypeScript"}
-  }
-}
+        // Replace placeholders in user prompt template
+        const userPrompt = this.userPromptTemplate
+            .replace('{FILE_STRUCTURE}', fileStructureText)
+            .replace('{FILE_COUNT}', Object.keys(fileStructure).length.toString());
 
-Rules:
-1. fileMappings: Map each file to either "frontend" or "backend"
-2. frameworks: Specify detected frameworks and languages
-3. Response must be valid JSON only - no additional text or explanations
-
-Please provide the refactoring analysis in the exact JSON format specified above.
-        `;
+        // Combine system and user prompts
+        return `${this.systemPrompt}\n\n---\n\n${userPrompt}`;
     }
 
     private createRefactoredStructure(originalFiles: Record<string, string>, aiPlan: string): RefactoredStructure {
@@ -284,9 +299,6 @@ Please provide the refactoring analysis in the exact JSON format specified above
             // Generate package.json files based on AI recommendations or defaults
             this.generatePackageJsonFiles(frontendFiles, backendFiles, aiResponse);
         } catch (error) {
-            // CRITICAL: JSON 파싱 실패 시 현재는 단순 text 파싱으로 fallback하지만,
-            // 이는 AI 응답의 일관성을 보장하지 못함
-            // 수정 필요: AI 재호출, 더 강력한 에러 처리, 또는 사용자 개입 요청
             console.warn('Failed to parse AI response as JSON, attempting text parsing:', error);
 
             // Extract framework information from AI text response
@@ -308,9 +320,6 @@ Please provide the refactoring analysis in the exact JSON format specified above
     }
 
     private extractFrameworkInfoFromText(aiText: string): Record<string, unknown> {
-        // CRITICAL: 현재 단순 문자열 매칭만으로 프레임워크를 감지하므로 정확성이 낮음
-        // 수정 필요: 더 정교한 패턴 매칭, 컨텍스트 고려, 다중 프레임워크 지원
-        // 예: React와 Vue가 동시에 감지되는 경우 우선순위 결정 로직 필요
         const lowerText = aiText.toLowerCase();
 
         // Extract framework information from AI text response
@@ -344,19 +353,6 @@ Please provide the refactoring analysis in the exact JSON format specified above
         frontendFiles: Record<string, string>,
         backendFiles: Record<string, string>,
     ): void {
-        // CRITICAL ISSUE: 현재 AI 프롬프트가 충분히 구체화되지 않아 JSON 응답 형식이 예상 가능하지 않음
-        // 이로 인해 fallback 분류 로직의 정확성이 낮아 의미가 퇴색됨
-        //
-        // 수정 대상:
-        // 1. buildRefactoringPrompt() - JSON 응답 형식을 강제하는 구체적인 프롬프트로 개선 (완료)
-        // 2. createRefactoredStructure() - JSON 파싱 실패 시 더 나은 에러 처리 및 재시도 로직 추가 필요
-        // 3. extractFrameworkInfoFromText() - 더 정확한 프레임워크 감지 패턴 추가 필요
-        // 4. classifyFilesByContent() - AI 의존도를 높이고 fallback 정확성 개선 또는 제거 고려
-        //
-        // 향후 개선 방향:
-        // - AI 프롬프트를 개선하여 구조화된 응답을 강제
-        // - JSON 파싱 실패 시 AI 재호출 또는 더 나은 fallback 전략 구현
-        // - 현재 content-based 분류의 한계를 인정하고 AI-first 접근으로 전환
         console.warn('Using enhanced content-based classification as fallback - improved accuracy');
 
         for (const [path, content] of Object.entries(originalFiles)) {

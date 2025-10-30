@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Dashboard from '../components/Dashboard';
-import Settings from '../components/Settings';
-import FileDetails from '../components/FileDetails';
-import BuildLogs from '../components/BuildLogs';
+import Dashboard from '../components//project/Dashboard';
+import Settings from '../components/project/Settings';
+import FileDetails from '../components/project/FileDetails';
+import BuildLogs from '../components/project/BuildLogs';
 import { Project } from '../types';
 import { fetchProject, deleteProject } from '../services/project/projectApi';
 
@@ -92,19 +92,6 @@ export default function ProjectDetailPage() {
         }
     };
 
-    const getStatusColor = (status?: string): string => {
-        switch (status) {
-            case '실행 중':
-                return 'bg-green-100 text-green-700';
-            case '중지됨':
-                return 'bg-red-100 text-red-700';
-            case '배포 중':
-                return 'bg-blue-100 text-blue-700';
-            default:
-                return 'bg-gray-200 text-gray-700';
-        }
-    };
-
     const PAGE_COMPONENTS: Record<PageType, React.ReactNode> = {
         dashboard: <Dashboard project={project} />,
         apikeys: <Settings project={project} />,
@@ -156,11 +143,19 @@ export default function ProjectDetailPage() {
         <div className="pt-6 max-w-6xl mx-auto">
             {/* 프로젝트 헤더 */}
             <div className="bg-white p-8 mb-6 rounded-lg shadow-md">
-                <div className="flex mb-4 justify-between items-center">
+                <div className="flex mb-6 justify-between items-center">
                     <div className="flex items-center gap-4">
                         <h1 className="text-4xl font-bold">{project.name}</h1>
                         <span
-                            className={`px-3 py-1 text-xs font-medium rounded ${getStatusColor(getStatusText(project.status))}`}
+                            className={`px-3 py-1 text-xs font-medium rounded ${
+                                project.status === 'completed'
+                                    ? 'bg-green-100 text-green-700'
+                                    : project.status === 'deploying'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : project.status === 'analyzing'
+                                        ? 'bg-yellow-100 text-yellow-700'
+                                        : 'bg-red-100 text-red-700'
+                            }`}
                         >
                             {getStatusText(project.status)}
                         </span>
@@ -172,6 +167,7 @@ export default function ProjectDetailPage() {
                         삭제
                     </button>
                 </div>
+                <div className="border-b border-gray-300 mb-6"></div>
 
                 {/* 프로젝트 정보 */}
                 <div className="space-y-3 text-md">
@@ -201,7 +197,7 @@ export default function ProjectDetailPage() {
                                 d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                             />
                         </svg>
-                        <span className="font-semibold">버전:</span>
+                        <span className="font-semibold">버전 </span>
                         <span>{project.version || '1.0.0'}</span>
                     </div>
 
@@ -238,7 +234,7 @@ export default function ProjectDetailPage() {
                                 d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
                             />
                         </svg>
-                        <span className="font-semibold">배포된 URL:</span>
+                        <span className="font-semibold">배포된 URL </span>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600">
@@ -250,7 +246,7 @@ export default function ProjectDetailPage() {
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                         </svg>
-                        <span className="font-semibold">마지막 수정:</span>
+                        <span className="font-semibold">마지막 배포 :</span>
                         <span>{formatDate(project.updatedAt.toISOString())}</span>
                     </div>
 
@@ -263,7 +259,7 @@ export default function ProjectDetailPage() {
                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                             />
                         </svg>
-                        <span className="font-semibold">배포일:</span>
+                        <span className="font-semibold">배포일 :</span>
                         <span>{formatDate(project.uploadedAt.toISOString())}</span>
                     </div>
 
@@ -277,7 +273,7 @@ export default function ProjectDetailPage() {
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                 />
                             </svg>
-                            <span className="font-semibold">파일명:</span>
+                            <span className="font-semibold">파일명 :</span>
                             <span className="truncate">{project.originalFileName}</span>
                             {project.fileSize && (
                                 <span className="text-sm text-gray-500">
@@ -290,7 +286,7 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* 네비게이션 탭 */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
+            <div className="flex gap-2 border-b border-gray-200">
                 {NAV_ITEMS.map(item => (
                     <button
                         key={item.id}
