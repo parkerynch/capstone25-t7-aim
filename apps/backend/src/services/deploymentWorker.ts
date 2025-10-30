@@ -1,4 +1,3 @@
-import { Service } from '../models/service.model';
 import { Log } from '../models/log.model';
 import { generateReadOnlyUrl } from './uploadService';
 import axios from 'axios';
@@ -29,18 +28,18 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         console.log(`[Deployment ${deployment._id as string}] ${message}`);
     };
 
-    // Initialize framework variables
-    const frontendFramework: string | null = null;
-    const backendFramework: string | null = null;
+    // Initialize framework variables (for future use)
+    // const frontendFramework: string | null = null;
+    // const backendFramework: string | null = null;
 
     try {
         // File Upload 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'UPLOADING' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'UPLOADING' } });
         const updatedDeployment1 = await Deployment.findById(deployment._id);
         await log(`File Upload - currentStep set to: ${updatedDeployment1?.currentStep}`);
 
         // Analyzing 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'ANALYZING' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'ANALYZING' } });
         const updatedDeployment2 = await Deployment.findById(deployment._id);
         await log(`Analyzing Code with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
 
@@ -66,17 +65,17 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             await log('No refactoring needed. Using original structure.');
         }
 
-        // Extract analysis data
-        const analysis = analysisResult.analysis || analysisResult;
+        // Extract analysis data (for future use)
+        // const analysis = analysisResult.analysis || analysisResult;
 
         // Splitting 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'SPLITTING' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'SPLITTING' } });
         const updatedDeployment3 = await Deployment.findById(deployment._id);
         await log(`Splitting Frontend & Backend - currentStep set to: ${updatedDeployment3?.currentStep}`);
         // This is a conceptual step, no actual code needed for this simulation
 
         // Deploying Backend 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'DEPLOYING_BACKEND' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'DEPLOYING_BACKEND' } });
         const updatedDeployment4 = await Deployment.findById(deployment._id);
         await log(`Deploying Backend to AWS Lambda - currentStep set to: ${updatedDeployment4?.currentStep}`);
 
@@ -87,25 +86,17 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // For now, simulate deployment with LocalStack
 
         const backendUrl = `https://${deployment._id}-backend.lambda-url.us-east-1.on.aws/`;
-        const backendService = new Service({
-            deploymentId: deployment._id as string,
-            type: 'BACKEND',
-            framework: backendFramework || 'Express.js',
-            language: analysis.backend?.language || 'TypeScript',
-            url: backendUrl,
-            status: 'DEPLOYING',
-        });
-        await backendService.save();
 
         // Simulate deployment delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        backendService.status = 'RUNNING';
-        await backendService.save();
         await log(`Backend deployed successfully at ${backendUrl}`);
 
+        // Update deployment with backend URL
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { backendUrl } });
+
         // Deploying Frontend 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'DEPLOYING_FRONTEND' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'DEPLOYING_FRONTEND' } });
         const updatedDeployment5 = await Deployment.findById(deployment._id);
         await log(`Deploying Frontend to AWS S3 - currentStep set to: ${updatedDeployment5?.currentStep}`);
 
@@ -117,25 +108,17 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // For now, simulate deployment with LocalStack
 
         const frontendUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
-        const frontendService = new Service({
-            deploymentId: deployment._id as string,
-            type: 'FRONTEND',
-            framework: frontendFramework || 'React',
-            language: analysis.frontend?.language || 'TypeScript',
-            url: frontendUrl,
-            status: 'DEPLOYING',
-        });
-        await frontendService.save();
 
         // Simulate deployment delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        frontendService.status = 'RUNNING';
-        await frontendService.save();
         await log(`Frontend deployed successfully at ${frontendUrl}`);
 
+        // Update deployment with frontend URL
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { frontendUrl } });
+
         // Finalizing 단계
-        await Deployment.findByIdAndUpdate(deployment._id, { currentStep: 'FINALIZING' });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'FINALIZING' } });
         const updatedDeployment6 = await Deployment.findById(deployment._id);
         await log(`Finalizing Deployment - currentStep set to: ${updatedDeployment6?.currentStep}`);
         // Deployment status update will be handled in queueService

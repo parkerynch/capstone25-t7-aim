@@ -191,12 +191,12 @@ export default function DeploymentPipeline({
         // 초기 데이터 로드
         fetchDeploymentData();
 
-        // Polling 설정 (1초마다 - 상태 체크 전용이므로 더 빠름)
+        // Polling 설정
         const intervalId = setInterval(() => {
             if (isPolling) {
                 fetchDeploymentData();
             }
-        }, 1000);
+        }, 2000);
 
         // Cleanup function
         return () => {
@@ -211,10 +211,15 @@ export default function DeploymentPipeline({
         setShowModal(false);
     };
 
-    const handleGoToProject = () => {
+    const handleGoToProjectDetail = () => {
         setShowModal(false);
         window.scrollTo(0, 0);
-        navigate('/project');
+        const projectId = localStorage.getItem('currentProjectId');
+        if (projectId) {
+            navigate(`/project/${projectId}`);
+        } else {
+            navigate('/project');
+        }
     };
 
     return (
@@ -289,18 +294,6 @@ export default function DeploymentPipeline({
                                 </div>
                             </motion.div>
                         ))}
-                    </div>
-
-                    {/* Bottom Buttons */}
-                    <div className="mt-8">
-                        {/* API 폴링 방식이므로 'Pause' 버튼은 실제 동작과 맞지 않아 주석 처리합니다.
-                          <button
-                              onClick={() => setIsAutoProgress(!isAutoProgress)}
-                              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg transition-colors"
-                          >
-                              {isAutoProgress ? '⏸ Pause Auto Progress' : '▶ Resume Auto Progress'}
-                          </button>
-                        */}
                     </div>
                 </motion.div>
 
@@ -407,7 +400,7 @@ export default function DeploymentPipeline({
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={handleGoToProject}
+                                        onClick={handleGoToProjectDetail}
                                         className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
                                     >
                                         Go to Projects

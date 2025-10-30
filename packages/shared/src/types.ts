@@ -50,16 +50,6 @@ export interface DeploymentResponse {
     completedAt?: string;
 }
 
-export interface ServiceResponse {
-    id: string;
-    deploymentId: string;
-    type: 'FRONTEND' | 'BACKEND';
-    framework: string;
-    language: string;
-    url: string;
-    status: 'DEPLOYING' | 'RUNNING' | 'FAILED';
-}
-
 export interface DeploymentStatusApiResponse {
     deploymentId: string;
     status: DeploymentResponse['status'];

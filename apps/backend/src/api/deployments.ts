@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { Deployment } from '../models/deployment.model';
-import { Service } from '../models/service.model';
 import { Log } from '../models/log.model';
 
 const router = Router();
@@ -18,7 +17,6 @@ router.get('/deployments/:deploymentId', async (req, res) => {
         console.log('API - Deployment currentStep:', deployment.currentStep);
         console.log('API - Deployment toObject():', deployment.toObject());
 
-        const services = await Service.find({ deploymentId });
         const logs = await Log.find({ deploymentId }).sort({ timestamp: 1 });
 
         res.json({
@@ -26,7 +24,6 @@ router.get('/deployments/:deploymentId', async (req, res) => {
                 ...deployment.toObject(),
                 projectId: deployment.projectId,
             },
-            services,
             logs,
         });
     } catch (error) {
