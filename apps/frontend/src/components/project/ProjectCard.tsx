@@ -95,57 +95,6 @@ export function ProjectCard() {
         });
     };
 
-    const getDeploymentStatusText = (deployment: Project['latestDeployment']): string => {
-        if (!deployment) return '배포 전';
-
-        switch (deployment.status) {
-            case 'PENDING':
-                return '배포 대기 중';
-            case 'IN_PROGRESS':
-                return '배포 진행 중';
-            case 'SUCCESS':
-                return '배포 완료';
-            case 'FAILED':
-                return '배포 실패';
-            default:
-                return '알 수 없음';
-        }
-    };
-
-    const getDeploymentStatusColor = (deployment: Project['latestDeployment']): string => {
-        if (!deployment) return 'bg-gray-400';
-
-        switch (deployment.status) {
-            case 'PENDING':
-                return 'bg-yellow-500';
-            case 'IN_PROGRESS':
-                return 'bg-blue-500';
-            case 'SUCCESS':
-                return 'bg-green-500';
-            case 'FAILED':
-                return 'bg-red-500';
-            default:
-                return 'bg-gray-500';
-        }
-    };
-
-    const getDeploymentBadgeColor = (deployment: Project['latestDeployment']): string => {
-        if (!deployment) return 'bg-gray-200 text-gray-700';
-
-        switch (deployment.status) {
-            case 'PENDING':
-                return 'bg-yellow-100 text-yellow-700';
-            case 'IN_PROGRESS':
-                return 'bg-blue-100 text-blue-700';
-            case 'SUCCESS':
-                return 'bg-green-100 text-green-700';
-            case 'FAILED':
-                return 'bg-red-100 text-red-700';
-            default:
-                return 'bg-gray-200 text-gray-700';
-        }
-    };
-
     if (loading) {
         return (
             <div className="col-span-2 text-center py-12 text-gray-500 bg-white rounded-lg border shadow-sm">

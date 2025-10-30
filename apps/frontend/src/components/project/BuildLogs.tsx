@@ -33,7 +33,7 @@ export default function BuildLogs({ project }: BuildLogsProps) {
             {/* 빌드 로그 헤더 */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Build Logs</h2>
-                <div className='flex flex-row justify-between'>
+                <div className="flex flex-row justify-between">
                     <p className="text-gray-600 ">
                         프로젝트 "{project.name}"의 빌드 및 배포 로그를 확인할 수 있습니다.
                     </p>
@@ -61,8 +61,6 @@ export default function BuildLogs({ project }: BuildLogsProps) {
                         </span>
                     </div>
                 </div>
-
-                
             </div>
 
             {/* 로그 표시 영역 - 퍼블리싱 상태 */}
