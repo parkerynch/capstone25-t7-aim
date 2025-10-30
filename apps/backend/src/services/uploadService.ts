@@ -3,23 +3,42 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { v4 as uuidv4 } from 'uuid';
 
 const S3_BUCKET = process.env.S3_BUCKET || 'aim-deploy-bucket';
-const S3_REGION = process.env.S3_REGION || 'ap-northeast-2';
+const S3_REGION = process.env.S3_REGION || 'ap-southeast-2';
 
-// 💻 로컬 환경일 때 LocalStack을 사용하도록 설정 추가
-const isLocal = process.env.NODE_ENV === 'development'; // 환경 변수로 로컬 여부 판단
+// LocalStack 사용 여부는 명시적 환경변수 USE_LOCALSTACK=true 로 제어합니다.
+// 기본값은 실제 AWS S3를 사용합니다.
+const useLocalStack = process.env.USE_LOCALSTACK === 'true';
 
-const s3Client = new S3Client({
+let s3Client = new S3Client({
     region: S3_REGION,
-    // 로컬 환경일 경우에만 endpoint와 credentials 설정
-    ...(isLocal && {
-        endpoint: 'http://localhost:4566', // LocalStack 주소
-        credentials: {
-            accessKeyId: 'test', // LocalStack은 아무 값이나 사용 가능
-            secretAccessKey: 'test',
-        },
-        forcePathStyle: true, // S3 경로 스타일을 강제 (LocalStack에 필요)
-    }),
+    // LocalStack을 사용할 때만 endpoint/credentials/forcePathStyle를 설정합니다.
+    ...(useLocalStack
+        ? {
+              endpoint: process.env.LOCALSTACK_ENDPOINT || 'http://localhost:4566',
+              credentials: {
+                  accessKeyId: process.env.S3_ACCESS_KEY_ID || 'test',
+                  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'test',
+              },
+              forcePathStyle: true,
+          }
+        : {}),
 });
+
+// If not using LocalStack but the project provides S3-specific env vars (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY),
+// recreate the client with those credentials so .env files using S3_* variables work.
+if (!useLocalStack && (process.env.S3_ACCESS_KEY_ID || process.env.S3_SECRET_ACCESS_KEY)) {
+    const accessKey = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+    const secretKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+    if (accessKey && secretKey) {
+        s3Client = new S3Client({
+            region: S3_REGION,
+            credentials: {
+                accessKeyId: accessKey,
+                secretAccessKey: secretKey,
+            },
+        });
+    }
+}
 
 export const uploadToS3 = async (base64Data: string, fileName: string) => {
     const key = `${uuidv4()}-${fileName}`;
@@ -55,8 +74,8 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
         expiresIn: 3600, // 1시간 동안 유효
     });
 
-    // LocalStack URL 수정
-    const finalSignedUrl = isLocal ? signedUrl.replace('localstack:4566', 'localhost:4566') : signedUrl;
+    // LocalStack을 사용할 때 로컬 호스트로 접근할 수 있도록 호스트 교체가 필요할 수 있습니다.
+    const finalSignedUrl = useLocalStack ? signedUrl.replace('localstack:4566', 'localhost:4566') : signedUrl;
 
     return { signedUrl: finalSignedUrl };
 };
