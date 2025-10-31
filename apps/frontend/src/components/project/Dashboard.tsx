@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Project } from '../../types';
+import { ProjectResponse } from '@shared/types';
 
 interface StatCard {
     icon: string;
@@ -15,7 +15,7 @@ interface SystemStat {
 }
 
 interface DashboardProps {
-    project: Project | null;
+    project: ProjectResponse | null;
 }
 
 const Dashboard = ({ project }: DashboardProps): JSX.Element => {
@@ -100,7 +100,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                             onClick={handleViewDeploymentStatus}
                             className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-lg font-semibold shadow-sm hover:shadow-xl transition-all duration-200 hover:scale-105"
                         >
-                            Re-Deploy
+                            Deployment Pipeline Status
                         </button>
                     )}
                 </div>

@@ -11,7 +11,7 @@ type DeploymentDoc = Document & IDeployment;
 function mapToDeploymentResponse(doc: DeploymentDoc): DeploymentResponse {
     const obj = doc.toObject();
     return {
-        _id: obj._id.toString(),
+        id: obj._id.toString(),
         projectId: obj.projectId.toString(),
         status: obj.status,
         currentStep: obj.currentStep,
@@ -27,7 +27,7 @@ function mapToDeploymentResponse(doc: DeploymentDoc): DeploymentResponse {
 function mapToProjectResponse(projectDoc: ProjectDoc, latestDeployment: DeploymentResponse | null): ProjectResponse {
     const projectObj = projectDoc.toObject();
     return {
-        _id: projectObj._id.toString(),
+        id: projectObj._id.toString(),
         name: projectObj.name,
         description: projectObj.description,
         version: projectObj.version,

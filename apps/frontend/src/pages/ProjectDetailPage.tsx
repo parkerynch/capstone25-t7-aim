@@ -4,7 +4,7 @@ import Dashboard from '../components//project/Dashboard';
 import Settings from '../components/project/Settings';
 import FileDetails from '../components/project/FileDetails';
 import BuildLogs from '../components/project/BuildLogs';
-import { Project } from '../types';
+import { ProjectResponse } from '@shared/types';
 import { fetchProject, deleteProject } from '../apis/projectApi';
 
 type PageType = 'dashboard' | 'apikeys' | 'file' | 'buildlogs';
@@ -54,7 +54,7 @@ export default function ProjectDetailPage() {
     const navigate = useNavigate();
 
     const [page, setPage] = useState<PageType>('dashboard');
-    const [project, setProject] = useState<Project | null>(null);
+    const [project, setProject] = useState<ProjectResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -259,7 +259,7 @@ export default function ProjectDetailPage() {
                             />
                         </svg>
                         <span className="font-semibold">최근 배포일 :</span>
-                        <span>{formatDate(project.updatedAt.toISOString())}</span>
+                        <span>{formatDate(project.updatedAt)}</span>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600">
@@ -272,7 +272,7 @@ export default function ProjectDetailPage() {
                             />
                         </svg>
                         <span className="font-semibold">생성일 :</span>
-                        <span>{formatDate(project.createdAt.toISOString())}</span>
+                        <span>{formatDate(project.createdAt)}</span>
                     </div>
 
                     {project.originalFileName && (

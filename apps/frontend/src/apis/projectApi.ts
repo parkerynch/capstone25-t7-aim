@@ -1,54 +1,17 @@
-import { ProjectResponse, DeploymentResponse } from '@shared/types';
-import { Project, Deployment } from '../types';
+import { ProjectResponse } from '@shared/types';
 import { getData, postData, deleteData } from '../utils/api';
 
 const API_BASE_URL = '/api';
 
-// API 응답을 내부 타입으로 변환하는 유틸리티 함수들
-export function convertProjectResponse(apiProject: ProjectResponse): Project {
-    return {
-        id: apiProject._id,
-        name: apiProject.name,
-        description: apiProject.description,
-        version: apiProject.version,
-        tags: apiProject.tags,
-        status: apiProject.status,
-        uploadedAt: new Date(apiProject.uploadedAt),
-        createdAt: new Date(apiProject.createdAt),
-        updatedAt: new Date(apiProject.updatedAt),
-        zipFileUrl: apiProject.zipFileUrl,
-        originalFileName: apiProject.originalFileName,
-        fileSize: apiProject.fileSize,
-        s3Url: apiProject.s3Url,
-        buildSettings: apiProject.buildSettings,
-        latestDeployment: apiProject.latestDeployment ? convertDeploymentResponse(apiProject.latestDeployment) : null,
-    };
-}
-
-export function convertDeploymentResponse(apiDeployment: DeploymentResponse): Deployment {
-    return {
-        id: apiDeployment._id,
-        projectId: apiDeployment.projectId,
-        status: apiDeployment.status,
-        frontendUrl: apiDeployment.frontendUrl,
-        backendUrl: apiDeployment.backendUrl,
-        errorMessage: apiDeployment.errorMessage,
-        startedAt: new Date(apiDeployment.startedAt),
-        completedAt: apiDeployment.completedAt ? new Date(apiDeployment.completedAt) : undefined,
-    };
-}
-
 // 프로젝트 관련 API 함수들
-export async function fetchProjects(): Promise<Project[]> {
+export async function fetchProjects(): Promise<ProjectResponse[]> {
     const response = await getData(API_BASE_URL, 'projects');
-    const data: ProjectResponse[] = response.data;
-    return data.map(convertProjectResponse);
+    return response.data;
 }
 
-export async function fetchProject(id: string): Promise<Project> {
+export async function fetchProject(id: string): Promise<ProjectResponse> {
     const response = await getData(API_BASE_URL, `projects/${id}`);
-    const data: ProjectResponse = response.data;
-    return convertProjectResponse(data);
+    return response.data;
 }
 
 export async function deleteProject(id: string): Promise<void> {

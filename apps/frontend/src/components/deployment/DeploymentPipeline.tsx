@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fetchDeployment, fetchDeploymentStatus } from '../../apis/deploymentApi';
-import { Deployment } from '../../types';
+import { DeploymentResponse } from '@shared/types';
 
 interface PipelineStep {
     id: number;
@@ -17,8 +17,8 @@ interface EnvVar {
 }
 
 interface DeploymentPipelineProps {
-    projectId: string;
-    initialDeployment?: Deployment | null;
+    projectId?: string;
+    initialDeployment?: DeploymentResponse | null;
     initialLogs?: { message: string }[];
 }
 

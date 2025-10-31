@@ -21,7 +21,7 @@ export interface BuildSettings {
 }
 
 export interface ProjectResponse {
-    _id: string;
+    id: string;
     name: string;
     description?: string;
     version?: string;
@@ -39,7 +39,7 @@ export interface ProjectResponse {
 }
 
 export interface DeploymentResponse {
-    _id: string;
+    id: string;
     projectId: string;
     status: 'PENDING' | 'IN_PROGRESS' | 'SUCCESS' | 'FAILED';
     currentStep?: 'UPLOADING' | 'ANALYZING' | 'SPLITTING' | 'DEPLOYING_BACKEND' | 'DEPLOYING_FRONTEND' | 'FINALIZING';

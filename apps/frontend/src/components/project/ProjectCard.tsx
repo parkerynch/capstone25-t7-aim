@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Project } from '../../types';
+import { ProjectResponse } from '@shared/types';
 import { fetchProjects, deleteProject } from '../../apis/projectApi';
 
 export function ProjectCard() {
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [projects, setProjects] = useState<ProjectResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
     // API에서 프로젝트 목록 불러오기
@@ -173,7 +173,7 @@ export function ProjectCard() {
                                     최근 배포일 :{' '}
                                     {project.latestDeployment?.status === 'SUCCESS' &&
                                     project.latestDeployment?.completedAt
-                                        ? formatDate(project.latestDeployment.completedAt.toISOString())
+                                        ? formatDate(project.latestDeployment.completedAt)
                                         : ' '}
                                 </span>
                             </div>

@@ -11,7 +11,7 @@ type LogDoc = Document & ILog;
 function mapToDeploymentResponse(doc: DeploymentDoc): DeploymentResponse {
     const obj = doc.toObject();
     return {
-        _id: obj._id.toString(),
+        id: obj._id.toString(),
         projectId: obj.projectId.toString(),
         status: obj.status,
         currentStep: obj.currentStep,
