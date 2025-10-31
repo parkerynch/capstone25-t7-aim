@@ -2,6 +2,8 @@ import { Log } from '../models/log.model';
 import { generateReadOnlyUrl } from './uploadService';
 import axios from 'axios';
 import { IDeployment, Deployment } from '../models/deployment.model';
+import { AimException, ErrorCode } from '@shared/errors';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 const AIM_HELLO_API_URL = process.env.AIM_HELLO_API_URL || 'http://localhost:8000';
 
@@ -48,9 +50,16 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         await log(`Generated pre-signed URL for AI analysis`);
 
         // Send pre-signed URL to AI analysis service
-        const analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/analyze`, {
-            s3Url: signedUrl,
-        });
+        let analyzeResponse;
+        try {
+            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/analyze`, {
+                s3Url: signedUrl,
+            });
+        } catch (axiosError) {
+            const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
+            console.error(errorDetails);
+            throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
+        }
         const analysisResult = analyzeResponse.data;
         await log(`AI Analysis complete: ${JSON.stringify(analysisResult)}`);
 
@@ -125,8 +134,9 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         await log('Deployment completed successfully.');
     } catch (error) {
         console.error(error);
-        if (error instanceof Error) {
-            await log(`Deployment failed: ${error.message}`);
+        if (error instanceof AimException) {
+            const aimError = error as AimException;
+            await log(`Deployment failed: ${aimError.message}`);
         } else {
             await log(`Deployment failed: ${String(error)}`);
         }

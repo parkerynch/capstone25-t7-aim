@@ -12,6 +12,7 @@ import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'le
 import { Model, TestModel } from '../service/model';
 import { HelloService } from '../service/service';
 import { RefactoringService } from '../service/refactoring-service';
+import { AimException, ErrorCode } from '../../../../packages/shared/src/errors';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -86,7 +87,7 @@ export class HelloAPIController extends GeneralWEBController {
         _log(NS, `${errScope} ...`);
         const i = $U.N(id, 0);
         const val = this.BUFF[i];
-        if (val === undefined) throw new Error(`404 NOT FOUND - id:${id}`);
+        if (val === undefined) throw new AimException(ErrorCode.NOT_FOUND);
         return this.modelAsView({ ...val, id: `${i}` });
     };
 
@@ -121,8 +122,8 @@ export class HelloAPIController extends GeneralWEBController {
         //* append into array.
         _log(NS, errScope);
         const i = $U.N(id, 0);
-        if (i) throw new Error(`@id[${id}] (number) is invalid - ${errScope}`);
-        if (!body?.name) throw new Error(`.name (string) is required - ${errScope}`);
+        if (i) throw new AimException(ErrorCode.INVALID_INPUT);
+        if (!body?.name) throw new AimException(ErrorCode.INVALID_INPUT);
         const name = $T.S2(body?.name, '', ' ').trim(); // clear new-lines
         const model: TestModel = { name, _id: `${this.BUFF.length}` };
         this.BUFF.push(model);
@@ -180,7 +181,7 @@ export class HelloAPIController extends GeneralWEBController {
 
         const s3Url = body?.s3Url;
         if (!s3Url) {
-            throw new Error('s3Url is required');
+            throw new AimException(ErrorCode.INVALID_INPUT);
         }
 
         _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
@@ -193,7 +194,7 @@ export class HelloAPIController extends GeneralWEBController {
             return result;
         } catch (error) {
             _log(NS, `[ERROR] Refactoring failed: ${error}`);
-            throw error;
+            throw new AimException(ErrorCode.AI_REFACTORING_FAILED);
         }
     };
 }

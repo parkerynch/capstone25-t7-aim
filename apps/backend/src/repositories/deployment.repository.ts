@@ -2,6 +2,7 @@ import { Deployment, IDeployment } from '../models/deployment.model';
 import { Log, ILog } from '../models/log.model';
 import { DeploymentResponse } from '@shared/types';
 import { Document } from 'mongoose';
+import { AimException, ErrorCode } from '@shared/errors';
 
 // --- DTO 변환 헬퍼 ---
 type DeploymentDoc = Document & IDeployment;
@@ -25,10 +26,10 @@ function mapToDeploymentResponse(doc: DeploymentDoc): DeploymentResponse {
 
 // --- Repository 객체 ---
 export const deploymentRepository = {
-    async getDeploymentById(deploymentId: string): Promise<{ deployment: DeploymentResponse; logs: LogDoc[] } | null> {
+    async getDeploymentById(deploymentId: string): Promise<{ deployment: DeploymentResponse; logs: LogDoc[] }> {
         const deployment = await Deployment.findById(deploymentId);
         if (!deployment) {
-            return null;
+            throw new AimException(ErrorCode.NOT_FOUND);
         }
 
         const logs = await Log.find({ deploymentId }).sort({ timestamp: 1 });
@@ -45,12 +46,12 @@ export const deploymentRepository = {
         projectId: string;
         frontendUrl?: string;
         backendUrl?: string;
-    } | null> {
+    }> {
         const deployment = await Deployment.findById(deploymentId).select(
             'status currentStep projectId frontendUrl backendUrl',
         );
         if (!deployment) {
-            return null;
+            throw new AimException(ErrorCode.NOT_FOUND);
         }
 
         return {

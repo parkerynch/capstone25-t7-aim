@@ -1,6 +1,7 @@
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import { AimException, ErrorCode } from '@shared/errors';
 
 const S3_BUCKET = process.env.S3_BUCKET || 'aim-deploy-bucket';
 const S3_REGION = process.env.S3_REGION || 'ap-southeast-2';
@@ -59,7 +60,7 @@ export const uploadToS3 = async (base64Data: string, fileName: string) => {
         return { key };
     } catch (error) {
         console.error('❌ S3 upload failed:', error);
-        throw error;
+        throw new AimException(ErrorCode.S3_UPLOAD_FAILED);
     }
 };
 

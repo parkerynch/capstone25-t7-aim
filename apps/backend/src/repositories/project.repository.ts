@@ -2,6 +2,7 @@ import { Project, IProject } from '../models/project.model';
 import { Deployment, IDeployment } from '../models/deployment.model';
 import { ProjectResponse, DeploymentResponse } from '@shared/types';
 import { Document } from 'mongoose';
+import { AimException, ErrorCode } from '@shared/errors';
 
 // --- DTO 변환 헬퍼 ---
 type ProjectDoc = Document & IProject;
@@ -78,10 +79,10 @@ export const projectRepository = {
         return projectsWithDeployment;
     },
 
-    async getProjectById(id: string): Promise<ProjectResponse | null> {
+    async getProjectById(id: string): Promise<ProjectResponse> {
         const project = await Project.findById(id);
         if (!project) {
-            return null;
+            throw new AimException(ErrorCode.NOT_FOUND);
         }
 
         const latestDeploymentDoc = await Deployment.findOne({ projectId: project._id })
@@ -93,9 +94,11 @@ export const projectRepository = {
         return mapToProjectResponse(project, latestDeployment);
     },
 
-    async deleteProjectById(id: string): Promise<boolean> {
+    async deleteProjectById(id: string): Promise<void> {
         const result = await Project.findByIdAndDelete(id);
-        return !!result;
+        if (!result) {
+            throw new AimException(ErrorCode.NOT_FOUND);
+        }
     },
 
     async createProject(data: {

@@ -9,6 +9,12 @@ export interface HelloResponse {
     timestamp: string;
 }
 
+export interface ApiErrorPayload {
+    code: string;
+    description: string;
+    details?: any;
+}
+
 export interface BuildSettings {
     framework?: string;
     language?: string;
