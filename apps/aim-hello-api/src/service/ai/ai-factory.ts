@@ -4,7 +4,7 @@ import { ClaudeService } from './claude-service';
 
 export class AIFactory {
     public static createService(type?: AIServiceType): AIService {
-        const aiType = type || AIServiceType.CLAUDE;
+        const aiType = type || AIServiceType.GEMINI;
 
         switch (aiType) {
             case AIServiceType.GEMINI:
