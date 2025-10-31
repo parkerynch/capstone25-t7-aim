@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { Deployment } from '../models/deployment.model';
-import { Log } from '../models/log.model';
+import { deploymentRepository } from '../repositories/deployment.repository';
 
 const router = Router();
 
@@ -8,24 +7,12 @@ router.get('/deployments/:deploymentId', async (req, res) => {
     const { deploymentId } = req.params;
 
     try {
-        const deployment = await Deployment.findById(deploymentId);
-        if (!deployment) {
+        const result = await deploymentRepository.getDeploymentById(deploymentId);
+        if (!result) {
             return res.status(404).json({ message: 'Deployment not found' });
         }
 
-        console.log('API - Raw deployment from DB:', deployment);
-        console.log('API - Deployment currentStep:', deployment.currentStep);
-        console.log('API - Deployment toObject():', deployment.toObject());
-
-        const logs = await Log.find({ deploymentId }).sort({ timestamp: 1 });
-
-        res.json({
-            deployment: {
-                ...deployment.toObject(),
-                projectId: deployment.projectId,
-            },
-            logs,
-        });
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error getting deployment status' });
@@ -36,23 +23,12 @@ router.get('/deployments/:deploymentId/status', async (req, res) => {
     const { deploymentId } = req.params;
 
     try {
-        const deployment = await Deployment.findById(deploymentId).select(
-            'status currentStep projectId frontendUrl backendUrl',
-        );
-        if (!deployment) {
+        const result = await deploymentRepository.getDeploymentStatusById(deploymentId);
+        if (!result) {
             return res.status(404).json({ message: 'Deployment not found' });
         }
 
-        console.log('Status API - Deployment status:', deployment.status);
-        console.log('Status API - Current step:', deployment.currentStep);
-
-        res.json({
-            status: deployment.status,
-            currentStep: deployment.currentStep,
-            projectId: deployment.projectId.toString(),
-            frontendUrl: deployment.frontendUrl,
-            backendUrl: deployment.backendUrl,
-        });
+        res.json(result);
     } catch (error) {
         console.error('Status check error:', error);
         res.status(500).json({ message: 'Error getting deployment status' });

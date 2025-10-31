@@ -55,5 +55,4 @@ export interface DeploymentStatusApiResponse {
     status: DeploymentResponse['status'];
     frontendUrl?: string;
     backendUrl?: string;
-    errorMessage?: string;
 }

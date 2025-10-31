@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Project } from '../../types';
 import { BuildSettings } from '@shared/types';
-import { fetchProject } from '../../services/project/projectApi';
+import { fetchProject } from '../../apis/projectApi';
 
 interface SettingsProps {
     project: Project | null;

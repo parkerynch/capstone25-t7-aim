@@ -1,5 +1,8 @@
 import { DeploymentResponse } from '@shared/types';
-import { Deployment } from '../../types';
+import { Deployment } from '../types';
+import { getData } from '../utils/api';
+
+const API_BASE_URL = '/api';
 
 // 상태 체크 API 응답 타입
 export interface DeploymentStatusResponse {
@@ -20,8 +23,6 @@ export function convertDeploymentResponse(apiDeployment: DeploymentResponse): De
         currentStep: apiDeployment.currentStep,
         frontendUrl: apiDeployment.frontendUrl,
         backendUrl: apiDeployment.backendUrl,
-        deployedUrl: apiDeployment.frontendUrl || apiDeployment.backendUrl, // deployedUrl로 매핑
-        url: apiDeployment.frontendUrl || apiDeployment.backendUrl, // url로 매핑
         errorMessage: apiDeployment.errorMessage,
         startedAt: new Date(apiDeployment.startedAt),
         completedAt: apiDeployment.completedAt ? new Date(apiDeployment.completedAt) : undefined,
@@ -32,22 +33,15 @@ export function convertDeploymentResponse(apiDeployment: DeploymentResponse): De
 export async function fetchDeployment(
     deploymentId: string,
 ): Promise<{ deployment: Deployment; logs: { message: string }[] }> {
-    const response = await fetch(`/api/deployments/${deploymentId}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch deployment data');
-    }
-    const data = await response.json();
+    const response = await getData(API_BASE_URL, `deployments/${deploymentId}`);
     return {
-        deployment: convertDeploymentResponse(data.deployment),
-        logs: data.logs,
+        deployment: convertDeploymentResponse(response.data.deployment),
+        logs: response.data.logs,
     };
 }
 
 // 상태 체크 전용 API - 배포 상태만 빠르게 확인
 export async function fetchDeploymentStatus(deploymentId: string): Promise<DeploymentStatusResponse> {
-    const response = await fetch(`/api/deployments/${deploymentId}/status`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch deployment status');
-    }
-    return await response.json();
+    const response = await getData(API_BASE_URL, `deployments/${deploymentId}/status`);
+    return response.data;
 }

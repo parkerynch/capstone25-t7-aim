@@ -2,8 +2,8 @@ import DeploymentPipeline from '../components/deployment/DeploymentPipeline';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Project, Deployment } from '../types';
-import { fetchDeployment } from '../services/deployment/deploymentApi';
-import { fetchProject } from '../services/project/projectApi';
+import { fetchDeployment } from '../apis/deploymentApi';
+import { fetchProject } from '../apis/projectApi';
 
 export default function DeployPage() {
     const navigate = useNavigate();

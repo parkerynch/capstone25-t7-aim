@@ -1,5 +1,8 @@
 import { ProjectResponse, DeploymentResponse } from '@shared/types';
-import { Project, Deployment } from '../../types';
+import { Project, Deployment } from '../types';
+import { getData, postData, deleteData } from '../utils/api';
+
+const API_BASE_URL = '/api';
 
 // API 응답을 내부 타입으로 변환하는 유틸리티 함수들
 export function convertProjectResponse(apiProject: ProjectResponse): Project {
@@ -37,30 +40,19 @@ export function convertDeploymentResponse(apiDeployment: DeploymentResponse): De
 
 // 프로젝트 관련 API 함수들
 export async function fetchProjects(): Promise<Project[]> {
-    const response = await fetch('/api/projects');
-    if (!response.ok) {
-        throw new Error('Failed to fetch projects');
-    }
-    const data: ProjectResponse[] = await response.json();
+    const response = await getData(API_BASE_URL, 'projects');
+    const data: ProjectResponse[] = response.data;
     return data.map(convertProjectResponse);
 }
 
 export async function fetchProject(id: string): Promise<Project> {
-    const response = await fetch(`/api/projects/${id}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch project');
-    }
-    const data: ProjectResponse = await response.json();
+    const response = await getData(API_BASE_URL, `projects/${id}`);
+    const data: ProjectResponse = response.data;
     return convertProjectResponse(data);
 }
 
 export async function deleteProject(id: string): Promise<void> {
-    const response = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE',
-    });
-    if (!response.ok) {
-        throw new Error('Failed to delete project');
-    }
+    await deleteData(API_BASE_URL, `projects/${id}`);
 }
 
 export async function createProject(
@@ -68,21 +60,11 @@ export async function createProject(
     projectName: string,
     fileData: string,
 ): Promise<{ projectId: string }> {
-    const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            fileName,
-            projectName,
-            fileData,
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to create project');
-    }
-
-    return await response.json();
+    const body = {
+        fileName,
+        projectName,
+        fileData,
+    };
+    const response = await postData(API_BASE_URL, 'projects', body);
+    return response.data;
 }

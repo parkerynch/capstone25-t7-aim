@@ -19,8 +19,6 @@ export interface Project {
 }
 
 export interface Deployment {
-    deployedUrl: any;
-    url: any;
     id: string;
     projectId: string;
     status: 'PENDING' | 'IN_PROGRESS' | 'SUCCESS' | 'FAILED';

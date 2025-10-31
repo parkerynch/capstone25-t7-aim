@@ -5,7 +5,7 @@ import Settings from '../components/project/Settings';
 import FileDetails from '../components/project/FileDetails';
 import BuildLogs from '../components/project/BuildLogs';
 import { Project } from '../types';
-import { fetchProject, deleteProject } from '../services/project/projectApi';
+import { fetchProject, deleteProject } from '../apis/projectApi';
 
 type PageType = 'dashboard' | 'apikeys' | 'file' | 'buildlogs';
 

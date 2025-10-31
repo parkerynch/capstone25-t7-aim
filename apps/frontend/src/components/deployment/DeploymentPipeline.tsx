@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { fetchDeployment, fetchDeploymentStatus } from '../../services/deployment/deploymentApi';
+import { fetchDeployment, fetchDeploymentStatus } from '../../apis/deploymentApi';
 import { Deployment } from '../../types';
 
 interface PipelineStep {
@@ -180,7 +180,7 @@ export default function DeploymentPipeline({
                     setIsPolling(false);
                     // 배포 완료 시 모달 표시 (SUCCESS일 때만)
                     if (overallStatus === 'SUCCESS') {
-                        const url = deployment.url || deployment.deployedUrl || `https://${deployment.projectId}.app`;
+                        const url = deployment.frontendUrl || `https://${deployment.projectId}.app`;
                         setDeployedUrl(url);
                         setShowModal(true);
                     }

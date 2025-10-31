@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Project } from '../../types';
-import { fetchProjects, deleteProject } from '../../services/project/projectApi';
+import { fetchProjects, deleteProject } from '../../apis/projectApi';
 
 export function ProjectCard() {
     const [projects, setProjects] = useState<Project[]>([]);
