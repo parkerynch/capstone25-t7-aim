@@ -11,7 +11,7 @@
 import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'lemon-core';
 import { Model, TestModel } from '../service/model';
 import { HelloService } from '../service/service';
-import { RefactoringService } from '../service/refactoring-service';
+import { generateBlogContent } from '../service/gemini-service';
 import { AimException, ErrorCode } from '../../../../packages/shared/src/errors';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
@@ -36,9 +36,6 @@ export class HelloAPIController extends GeneralWEBController {
         },
     ];
 
-    /** Refactoring service for AI-powered code refactoring */
-    private refactoringService: RefactoringService;
-
     /**
      * default constructor.
      */
@@ -48,7 +45,6 @@ export class HelloAPIController extends GeneralWEBController {
 
         const tableName = $U.env('MY_DYNAMO_TABLE');
         this.service = service ?? new HelloService(tableName);
-        this.refactoringService = new RefactoringService();
         _log(NS, `> tableName = ${tableName}`);
     }
 
@@ -117,7 +113,6 @@ export class HelloAPIController extends GeneralWEBController {
         const errScope = `doPost(${this.type()}/${id ?? ''})`;
         _log(NS, `${errScope} ...`);
         if (id == 'echo') return this.doPostEcho('0', param, body, context);
-        if (id == 'analyze') return this.doPostAnalyze('0', param, body, context);
 
         //* append into array.
         _log(NS, errScope);
@@ -170,32 +165,49 @@ export class HelloAPIController extends GeneralWEBController {
     };
 
     /**
-     * Analyze the project.
+     * handler for gemini requests. (cmd = 'gemini')
+     * 이제 이 메소드가 'cmd'가 'gemini'인 모든 요청을 받습니다.
+     * 'id' 값으로 분기 처리를 합니다.
      *
      * ```sh
-     * $ http POST ':8000/hello/analyze' s3Url=...
+     * $ http POST ':8000/hello/generate-blog-content/gemini' keyword=... s3Url=...
+     * ```
      */
-    public doPostAnalyze: NextHandler = async (id, param, body, context) => {
-        const errScope = `doPostAnalyze(${this.type()}/${id ?? ''})`;
+    public doPostGemini: NextHandler = async (id, param, body, context) => {
+        const errScope = `doPostGemini(${this.type()}/${id ?? ''})`;
         _log(NS, `${errScope} ...`);
 
-        const s3Url = body?.s3Url;
-        if (!s3Url) {
-            throw new AimException(ErrorCode.INVALID_INPUT);
+        // [수정] 'id' 값으로 분기합니다.
+        if (id == 'generate-blog-content') {
+            const keyword = body?.keyword;
+            const s3Url = body?.s3Url;
+
+            if (!keyword || !s3Url) {
+                throw new AimException(ErrorCode.INVALID_INPUT);
+            }
+
+            _log(NS, `[DEBUG] Received keyword: ${keyword}, S3 URL: ${s3Url}`);
+
+            try {
+                // Call Gemini ZIP analysis service
+                const result = await generateBlogContent({ s3Url, keyword });
+                _log(NS, `[DEBUG] ZIP analysis completed successfully`);
+
+                return result;
+            } catch (error) {
+                _log(NS, `[ERROR] ZIP analysis failed: ${error}`);
+                throw new AimException(ErrorCode.AI_REFACTORING_FAILED);
+            }
         }
 
-        _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
-
-        try {
-            // Call AI refactoring service
-            const result = await this.refactoringService.refactorCode(s3Url);
-            _log(NS, `[DEBUG] Refactoring completed: ${result.status}`);
-
-            return result;
-        } catch (error) {
-            _log(NS, `[ERROR] Refactoring failed: ${error}`);
-            throw new AimException(ErrorCode.AI_REFACTORING_FAILED);
+        // 예시: /hello/world/gemini 요청
+        if (id == 'world') {
+            return { body };
         }
+
+        // 일치하는 'id'가 없을 경우
+        _log(NS, `!WARN! Unhandled id in doPostGemini: ${id}`);
+        throw new AimException(ErrorCode.NOT_FOUND, `Unknown gemini command: ${id}`);
     };
 }
 

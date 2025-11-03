@@ -43,7 +43,7 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Analyzing 단계
         await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'ANALYZING' } });
         const updatedDeployment2 = await Deployment.findById(deployment._id);
-        await log(`Analyzing Code with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
+        await log(`Generating Blog Content with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
 
         // Generate pre-signed URL for AI analysis service
         const { signedUrl } = await generateReadOnlyUrl(s3Key);
@@ -52,7 +52,8 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Send pre-signed URL to AI analysis service
         let analyzeResponse;
         try {
-            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/analyze`, {
+            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/generate-blog-content/gemini`, {
+                keyword: 'code analysis', // 나중에 동적으로 변경
                 s3Url: signedUrl,
             });
         } catch (axiosError) {
@@ -61,17 +62,13 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
         }
         const analysisResult = analyzeResponse.data;
-        await log(`AI Analysis complete: ${JSON.stringify(analysisResult)}`);
+        await log(`Blog content generated: ${JSON.stringify(analysisResult)}`);
 
-        // Check if refactoring was performed
-        if (analysisResult.status === 'refactoring_completed') {
-            await log('AI refactoring completed. Proceeding with deployment.');
-            // Use the refactored ZIP from newS3Key
-            const refactoredS3Key = analysisResult.newS3Key;
-            await log(`Using refactored ZIP: ${refactoredS3Key}`);
-            // TODO: Download refactored ZIP from S3 and use it for deployment
-        } else if (analysisResult.status === 'no_refactoring_needed') {
-            await log('No refactoring needed. Using original structure.');
+        // Check if blog content was generated
+        if (analysisResult.titles && analysisResult.tags) {
+            await log('Blog content generated successfully. Proceeding with deployment.');
+        } else {
+            await log('Blog content generation may have issues.');
         }
 
         // Extract analysis data (for future use)
