@@ -36,6 +36,5 @@ export default $LUT;
  * Types for code separation
  */
 export interface GeneratedContent {
-    frontendFiles: { path: string; content: string }[];
-    backendFiles: { path: string; content: string }[];
+    monorepoFiles: { path: string; content: string }[];
 }

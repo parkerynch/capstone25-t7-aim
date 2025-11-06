@@ -1,9 +1,10 @@
 import { Log } from '../models/log.model';
-import { generateReadOnlyUrl } from './uploadService';
+import { generateReadOnlyUrl, uploadToS3 } from './uploadService';
 import axios from 'axios';
 import { IDeployment, Deployment } from '../models/deployment.model';
 import { AimException, ErrorCode } from '@shared/errors';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
+import JSZip from 'jszip';
 
 const AIM_HELLO_API_URL = process.env.AIM_HELLO_API_URL || 'http://localhost:8000';
 
@@ -43,7 +44,7 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Analyzing 단계
         await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'ANALYZING' } });
         const updatedDeployment2 = await Deployment.findById(deployment._id);
-        await log(`Generating Blog Content with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
+        await log(`Refactoring code with AI - currentStep set to: ${updatedDeployment2?.currentStep}`);
 
         // Generate pre-signed URL for AI analysis service
         const { signedUrl } = await generateReadOnlyUrl(s3Key);
@@ -52,23 +53,43 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Send pre-signed URL to AI analysis service
         let analyzeResponse;
         try {
-            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/generate-blog-content/gemini`, {
-                keyword: 'code analysis', // 나중에 동적으로 변경
-                s3Url: signedUrl,
-            });
+            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/refactor-code/gemini`, { s3Url: signedUrl });
         } catch (axiosError) {
             const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
             console.error(errorDetails);
             throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
         }
         const analysisResult = analyzeResponse.data;
-        await log(`Blog content generated: ${JSON.stringify(analysisResult)}`);
 
-        // Check if blog content was generated
-        if (analysisResult.titles && analysisResult.tags) {
-            await log('Blog content generated successfully. Proceeding with deployment.');
+        // Check if monorepoFiles exist
+        if (analysisResult.monorepoFiles && analysisResult.monorepoFiles.length > 0) {
+            await log('Monorepo files generated successfully. Creating ZIP and uploading to S3.');
+
+            // Create ZIP from monorepoFiles
+            const zip = new JSZip();
+            analysisResult.monorepoFiles.forEach((file: { path: string; content: string }) => {
+                zip.file(file.path, file.content);
+            });
+            const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
+            const zipBase64 = Buffer.from(zipBuffer).toString('base64');
+
+            // Upload ZIP to S3
+            const { key } = await uploadToS3(zipBase64, 'monorepo.zip');
+            await log(`ZIP uploaded to S3 with key: ${key}`);
+
+            // Generate signed URL for the uploaded ZIP
+            const { signedUrl: zipSignedUrl } = await generateReadOnlyUrl(key);
+            await log(`Generated signed URL for ZIP: ${zipSignedUrl}`);
+
+            // Update deployment with monorepo ZIP URL
+            await Deployment.updateOne({ _id: deployment._id }, { $set: { monorepoZipUrl: zipSignedUrl } });
         } else {
-            await log('Blog content generation may have issues.');
+            await log('No monorepo files generated.');
+        } // Check if refactoring was successful
+        if (analysisResult.monorepoFiles && analysisResult.monorepoFiles.length > 0) {
+            await log('Code refactoring completed successfully.');
+        } else {
+            await log('Code refactoring may have issues.');
         }
 
         // Extract analysis data (for future use)

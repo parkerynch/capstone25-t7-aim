@@ -11,7 +11,7 @@
 import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'lemon-core';
 import { Model, TestModel } from '../service/model';
 import { HelloService } from '../service/service';
-import { generateBlogContent } from '../service/gemini-service';
+import { generateRefactoredCode } from '../service/gemini-service';
 import { AimException, ErrorCode } from '../../../../packages/shared/src/errors';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
@@ -170,7 +170,7 @@ export class HelloAPIController extends GeneralWEBController {
      * 'id' 값으로 분기 처리를 합니다.
      *
      * ```sh
-     * $ http POST ':8000/hello/generate-blog-content/gemini' keyword=... s3Url=...
+     * $ http POST ':8000/hello/refactor-code/gemini' keyword=... s3Url=...
      * ```
      */
     public doPostGemini: NextHandler = async (id, param, body, context) => {
@@ -178,24 +178,23 @@ export class HelloAPIController extends GeneralWEBController {
         _log(NS, `${errScope} ...`);
 
         // [수정] 'id' 값으로 분기합니다.
-        if (id == 'generate-blog-content') {
-            const keyword = body?.keyword;
+        if (id == 'refactor-code') {
             const s3Url = body?.s3Url;
 
-            if (!keyword || !s3Url) {
+            if (!s3Url) {
                 throw new AimException(ErrorCode.INVALID_INPUT);
             }
 
-            _log(NS, `[DEBUG] Received keyword: ${keyword}, S3 URL: ${s3Url}`);
+            _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
 
             try {
                 // Call Gemini ZIP analysis service
-                const result = await generateBlogContent({ s3Url, keyword });
-                _log(NS, `[DEBUG] ZIP analysis completed successfully`);
+                const result = await generateRefactoredCode({ s3Url });
+                _log(NS, `[DEBUG] Code refactoring completed successfully`);
 
                 return result;
             } catch (error) {
-                _log(NS, `[ERROR] ZIP analysis failed: ${error}`);
+                _log(NS, `[ERROR] Code refactoring failed: ${error}`);
                 throw new AimException(ErrorCode.AI_REFACTORING_FAILED);
             }
         }

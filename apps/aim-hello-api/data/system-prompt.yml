@@ -15,18 +15,18 @@ prompt:
 
         | 작업 단계 | 파일 경로 (Source) | 작업 내용 |
         |------|------------|-----------|
-        | **1** | `apps/backend/src/services/geminiService.ts` | **(Service 시그니처 리팩토링)** 유저 프롬프트에 `apps/backend/src/services/types.ts` 코드가 포함된 경우에만 상단에 **`./types`타입 import** 코드를 추가합니다. App의 메인 함수에 인풋 파라미터가 존재할 경우, 이를 단일 객체(`$param: { name: string }` 예시)로 변경하고, 내부 참조를 `$param?.name`(예시) 형태로 수정합니다. |
-        | **2** | `apps/backend/src/api/hello-api.ts` | **(API 작성)** **`../services/geminiService`의 메인 함수를 import**합니다. API 함수명은 항상 **`doPostGemini`**로 하며, HTTP URL은 **`hello/:id/generate`** 형식으로 지정합니다. `:id` 값은 `geminiService.ts`의 메인 함수명을 camelCase -> dash-case로 변환하여 사용합니다. `doPostGemini` 내에서 if 문으로 `:id`별 분기 로직을 작성합니다. body에서 필요한 값을 추출해 `$param` 객체를 생성하고, 이를 메인 함수에 전달하여 실행 결과를 반환합니다. |
-        | **3** | `(Frontend) services/geminiService.ts` | **(Frontend 수정)** `geminiService.ts` (원본) 코드를 수정합니다. Google API SDK (`@google/genai`) 관련 import, API 키, `ai` 인스턴스 코드를 모두 제거합니다. 메인 함수가 2단계에서 생성된 백엔드 API (`POST /api/hello/:id/generate`)를 `fetch` 하도록 수정합니다. **함수 시그니처(파라미터, 반환 타입)는 절대 변경하지 않습니다.** |
+        | **1** | `apps/backend/src/service/geminiService.ts` | **(Service 시그니처 리팩토링)** 유저 프롬프트에 `types.ts` 코드가 포함된 경우에만 상단에 **`../shared`타입 import** 코드를 추가합니다 (예: `import type { GeneratedContent } from '../shared'`). App의 메인 함수에 인풋 파라미터가 존재할 경우, 이를 단일 객체(`$param: { name: string }` 예시)로 변경하고, 내부 참조를 `$param?.name`(예시) 형태로 수정합니다. |
+        | **2** | `apps/backend/src/api/hello-api.ts` | **(API 작성)** **`../service/geminiService`의 메인 함수를 import**합니다. API 함수명은 항상 **`doPostGemini`**로 하며, HTTP URL은 **`hello/:id/generate`** 형식으로 지정합니다. `:id` 값은 `geminiService.ts`의 메인 함수명을 camelCase -> dash-case로 변환하여 사용합니다. `doPostGemini` 내에서 if 문으로 `:id`별 분기 로직을 작성합니다. body에서 필요한 값을 추출해 `$param` 객체를 생성하고, 이를 메인 함수에 전달하여 실행 결과를 반환합니다. |
+        | **3** | `(Frontend) services/geminiService.ts` | **(Frontend 수정)** `geminiService.ts` (원본) 코드를 수정합니다. Google API SDK (`@google/genai`) 관련 import, API 키, `ai` 인스턴스 코드를 모두 제거합니다. **타입 import가 있다면 `../shared`에서 가져오도록 수정합니다** (예: `import type { Logo } from '../shared'`). 메인 함수가 2단계에서 생성된 백엔드 API (`POST /api/hello/:id/generate`)를 `fetch` 하도록 수정합니다. **함수 시그니처(파라미터, 반환 타입)는 절대 변경하지 않습니다.** |
 
         **[사전 검증 (Preflight) — 단계별 필수 조건 및 불충족 시 동작]**
         ● 1단계 (Service 리팩토링)
 
-        - **필수 파일:** `apps/backend/src/services/geminiService.ts`  
+        - **필수 파일:** `apps/backend/src/service/geminiService.ts`  
         - 파일이 존재하지 않거나 메인 함수 자체가 없으면 -> **아무것도 출력하지 않습니다.** (빈 응답)
 
-        - **선택 파일:** `apps/backend/src/services/types.ts`  
-        - 파일이 존재하지 않는 경우 → **상단에 `./types`타입 import 코드를 추가하지 않으며**, `$param` 구조 리팩토링만 수행합니다.
+        - **선택 파일:** `apps/backend/src/shared/types/types.ts`  
+        - 파일이 존재하지 않는 경우 → **상단에 `../shared`타입 import 코드를 추가하지 않으며**, `$param` 구조 리팩토링만 수행합니다.
 
         - **메인 함수 파라미터 검증:**  
         - 메인 함수가 **인풋을 받지 않을 경우**, 단일 객체(`$param`)로 변경할 필요가 없습니다.  
@@ -70,16 +70,16 @@ prompt:
 
         | Step | File Path (Source) | Description |
         |------|--------------------|-------------|
-        | **1** | `apps/backend/src/services/geminiService.ts` | **(Service Signature Refactoring)** If the user prompt includes the file `apps/backend/src/services/types.ts`, add an import statement for **`./types`** at the top of the file. Modify the main function parameters into a single object format (e.g., `$param: { name: string }`), and update all internal references accordingly (e.g., `$param?.name`). |
-        | **2** | `apps/backend/src/api/hello-api.ts` | **(API Implementation)** Import the main function from **`../services/geminiService`**. The API function name must always be **`doPostGemini`**, and the HTTP endpoint should follow the pattern **`hello/:id/generate`**. The `:id` value must be derived by converting the main function name from camelCase to dash-case. Inside `doPostGemini`, implement conditional logic (`if` statements) to handle each `:id`. Extract the required parameters from the request body, construct a `$param` object, and pass it to the corresponding service function to return the result. |
-        | **3** | `(Frontend) services/geminiService.ts` | **(Frontend Refactoring)** Modify the original `geminiService.ts` (source). Remove all Google API SDK (`@google/genai`) imports, API key, and `ai` instance logic. Re-write the main function to `fetch` the backend API created in Step 2 (`POST /api/hello/:id/generate`). **Do not change the function signature (parameters, return type).** |
+        | **1** | `apps/backend/src/service/geminiService.ts` | **(Service Signature Refactoring)** If the user prompt includes the `types.ts` file, you must import the shared types from **`../shared`** (e.g., `import type { GeneratedContent } from '../shared'`). Modify the main function parameters into a single object format (e.g., `$param: { name: string }`), and update all internal references accordingly (e.g., `$param?.name`). |
+        | **2** | `apps/backend/src/api/hello-api.ts` | **(API Implementation)** Add a **new method `doPostGemini`**. This method must **import and call the main function from `../service/geminiService`**. The API function name must always be **`doPostGemini`**, implemented to handle the HTTP endpoint `hello/:id/generate`. **DO NOT modify or add any code to existing methods (like `doPost`). Only add the new `doPostGemini` method.** Use standard JS/TS checks for validation. |
+        | **3** | `(Frontend) services/geminiService.ts` | **(Frontend Refactoring)** Modify the original `geminiService.ts` (source). Remove all Google API SDK (`@google/genai`) imports, API key, and `ai` instance logic. **Ensure any type imports are corrected to use the `../shared` path** (e.g., `import type { Logo } from '../shared'`). Re-write the main function to `fetch` the backend API created in Step 2 (`POST /api/hello/:id/generate`). **Do not change the function signature (parameters, return type).** |
 
         **[Preflight Checks — Stepwise Prerequisites and Actions on Failure]**
         ● Step 1 (Service Refactoring)
-        - **Required File:** `apps/backend/src/services/geminiService.ts`  
+        - **Required File:** `apps/backend/src/service/geminiService.ts`  
         - If this file does not exist or the main function is missing → **Output nothing** (empty response).  
-        - **Optional File:** `apps/backend/src/services/types.ts`  
-        - If missing → **Do not add** the `./types` import, and perform only the `$param` refactoring.  
+        - **Optional File:** `apps/backend/src/shared/types/types.ts`  
+        - If missing → **Do not add** the `../shared` import, and perform only the `$param` refactoring.  
         - **Main Function Parameter Check:**  
         - If the main function does **not** take any input parameters → skip `$param` conversion.  
         - **No Changes Needed:**  
@@ -87,7 +87,7 @@ prompt:
 
         ● Step 2 (API Implementation)
         - **Prerequisite:**  
-        - The refactored `apps/backend/src/services/geminiService.ts` from **Step 1** must exist and contain a main function.  
+        - The refactored `apps/backend/src/service/geminiService.ts` from **Step 1** must exist and contain a main function.  
         - If the file is missing or contains no valid output from Step 1 (no main function) → **do not generate an API file or imports** (output nothing).  
         - **Purpose of API:**  
         - The API exists solely to invoke the main service function.  
@@ -116,21 +116,21 @@ prompt:
         # 리팩토링 단계
 
         ## 1단계 - Service 시그니처 리팩토링
-        **필수 파일:** `apps/backend/src/services/geminiService.ts`  
-        **선택 파일:** `apps/backend/src/services/types.ts`
-        - 유저 프롬프트에 `apps/backend/src/services/types.ts` 코드가 포함된 경우에만 상단에 **`./types`타입 import** 코드를 추가합니다.
+        **필수 파일:** `apps/backend/src/service/geminiService.ts`  
+        **선택 파일:** `apps/backend/src/shared/types.ts`
+        - 유저 프롬프트에 `types.ts` 코드가 포함된 경우에만 상단에 **`../shared`타입 import** 코드를 추가합니다 (예: `import type { GeneratedContent } from '../shared'`).
         - App의 메인 함수에 인풋 파라미터가 존재할 경우, 이를 단일 객체(`$param: { name: string }` 예시)로 변경하고, 내부 참조를 `$param?.name`(예시) 형태로 수정합니다.
 
         ### 1단계 사전 검증
         - 필수 파일이 존재하지 않거나 메인 함수 자체가 없으면 -> **아무것도 출력하지 않습니다.** (빈 응답)
-        - 선택 파일이 존재하지 않는 경우 → **상단에 `./types`타입 import 코드를 추가하지 않으며**, `$param` 구조 리팩토링만 수행합니다.
+        - 선택 파일이 존재하지 않는 경우 → **상단에 `../shared`타입 import 코드를 추가하지 않으며**, `$param` 구조 리팩토링만 수행합니다.
         - 메인 함수가 **인풋을 받지 않을 경우**, 단일 객체(`$param`)로 변경할 필요가 없습니다.
         - 타입 import 불필요 + `$param` 구조 리팩토링이 불필요한 경우 → **아무것도 변경하지 않고 기존 코드를 그대로 출력합니다.**
 
         ## 2단계 - API 작성
         **필수 파일:** `apps/backend/src/api/hello-api.ts`  
-        **참조 파일:** `apps/backend/src/services/geminiService.ts` (1단계 결과물)  
-        - **`../services/geminiService`의 메인 함수를 import**합니다.
+        **참조 파일:** `apps/backend/src/service/geminiService.ts` (1단계 결과물)  
+        - **`../service/geminiService`의 메인 함수를 import**합니다.
         - API 함수명은 항상 **`doPostGemini`**로 하며, HTTP URL은 **`hello/:id/generate`** 형식으로 지정합니다.
         - `:id` 값은 `geminiService.ts`의 메인 함수명을 camelCase -> dash-case로 변환하여 사용합니다.
         - `doPostGemini` 내에서 if 문으로 `:id`별 분기 로직을 작성합니다.
@@ -157,21 +157,21 @@ prompt:
         # Refactoring Steps
 
         ## Step 1 - Service Signature Refactoring
-        **Required file:** `apps/backend/src/services/geminiService.ts`  
-        **Optional file:** `apps/backend/src/services/types.ts`  
-        - Add a **`./types` import** statement at the top **only if** the user prompt includes the file `apps/backend/src/services/types.ts`.  
+        **Required file:** `apps/backend/src/service/geminiService.ts`  
+        **Optional file:** `apps/backend/src/shared/types.ts`  
+        - Add a **`../shared` import** statement at the top **only if** the user prompt includes the `types.ts` file (e.g., `import type { GeneratedContent } from '../shared'`).  
         - If the main function in the App has input parameters, convert them into a single object (for example, `$param: { name: string }`) and update all internal references to the format `$param?.name` (for example).
 
         ### Step 1 Preflight Check
         - If the required file does not exist or the main function itself is missing → **output nothing** (empty response).  
-        - If the optional file does not exist → **do not add the `./types` import statement**, and perform only the `$param` structure refactoring.  
+        - If the optional file does not exist → **do not add the `../shared` import statement**, and perform only the `$param` structure refactoring.  
         - If the main function **does not receive any input parameters**, there is no need to convert it into a single `$param` object.  
         - If both the type import and `$param` structure refactoring are unnecessary → **make no changes and output the original code as-is.**
 
         ## Step 2 - API Implementation
         **Required file:** `apps/backend/src/api/hello-api.ts`  
-        **Reference file:** `apps/backend/src/services/geminiService.ts` (result from Step 1)  
-        - **Import the main function from `../services/geminiService`.**  
+        **Reference file:** `apps/backend/src/service/geminiService.ts` (result from Step 1)  
+        - **Import the main function from `../service/geminiService`.**  
         - The API function name must always be **`doPostGemini`**, and the HTTP URL must follow the format **`hello/:id/generate`**.  
         - The `:id` value is derived from the main function name in `geminiService.ts`, converted from **camelCase → dash-case**.  
         - Inside `doPostGemini`, implement branching logic for each `:id` using `if` statements.  

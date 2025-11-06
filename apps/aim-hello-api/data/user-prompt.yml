@@ -8,12 +8,12 @@ prompt:
         **앱 이름 (APP_NAME):** {{appName}}
 
         **기존 코드:**
-        **apps/backend/src/services/geminiService.ts**
+        **apps/backend/src/service/geminiService.ts**
         ```typescript
         {{serviceCode}}
         ```
 
-        **apps/backend/src/services/types.ts
+        **apps/backend/src/services/types/types.ts
         ```typescript
         {{typeCode}}
         ```
@@ -25,9 +25,14 @@ prompt:
         **App Name (APP_NAME):** {{appName}}
 
         **Existing Code:**
-        **apps/backend/src/services/geminiService.ts**
+        **apps/backend/src/service/geminiService.ts**
         ```typescript
         {{serviceCode}}
+
+        **apps/backend/src/shared/types/types.ts**
+        ```typescript
+        {{typeCode}}
+        ```
 
     genaiBackend2: |-
         **[단계별 리팩토링 요청]**
@@ -42,11 +47,6 @@ prompt:
         {{apiCode}}
         ```
 
-        **이전 1단계의 결과물:**
-        **apps/backend/src/services/geminiService.ts**
-        ```typescript
-        {{serviceCode}}
-        ```
     genaiBackend2En: |-
         **[Step-by-Step Refactoring Request]**
 
@@ -58,13 +58,8 @@ prompt:
         **apps/backend/src/api/hello-api.ts** (Existing API file where HelloAPIController is defined)
         ```typescript
         {{apiCode}}
-
-        **Result from Step 1:**
-        **apps/backend/src/services/geminiService.ts**
-        ```typescript
-        {{serviceCode}}
         ```
-    genaiBackend3: |-
+    genaiFrontend1: |-
         **[단계별 리팩토링 요청]**
 
         **현재 작업 단계:** 3
@@ -79,11 +74,11 @@ prompt:
         {{serviceCode}}
         ```
 
-        **(Frontend) types.ts**
+        **(Frontend) apps/frontend/src/shared/types/types.ts**
         ```typescript
         {{typeCode}}
         ```
-    genaiBackend3En: |-
+    genaiFrontend1En: |-
         **[Step-by-Step Refactoring Request]**
 
         **Current Step:** 3
@@ -98,7 +93,7 @@ prompt:
         {{serviceCode}}
         ```
 
-        **(Frontend) types.ts**
+        **(Frontend) apps/frontend/src/shared/types/types.ts**
         ```typescript
         {{typeCode}}
         ```
@@ -113,7 +108,7 @@ prompt:
 
         ## 기존 코드
 
-        ### apps/backend/src/services/geminiService.ts
+        ### apps/backend/src/service/geminiService.ts
         ```typescript
         {{serviceCode}}
         ```
@@ -137,13 +132,6 @@ prompt:
         ```typescript
         {{apiCode}}
         ```
-
-        ## 이전 1단계의 결과물
-
-        ### apps/backend/src/services/geminiService.ts
-        ```typescript
-        {{serviceCode}}
-        ```
     openaiBackend1En: |-
         # Step-by-Step Refactoring Request
 
@@ -154,7 +142,7 @@ prompt:
         {{appName}}
 
         ## Existing Code
-        ### apps/backend/src/services/geminiService.ts
+        ### apps/backend/src/service/geminiService.ts
         ```typescript
         {{serviceCode}}
         ```
@@ -176,10 +164,4 @@ prompt:
         ### apps/backend/src/api/hello-api.ts (Existing API file where HelloAPIController is defined)
         ```typescript
         {{apiCode}}
-        ```
-
-        ## Result from Step 1
-        ### apps/backend/src/services/geminiService.ts
-        ```typescript
-        {{serviceCode}}
         ```
