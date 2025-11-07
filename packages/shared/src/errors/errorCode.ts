@@ -13,6 +13,7 @@ export enum ErrorCode {
     AI_REFACTORING_FAILED = 'AIMDEP00200',
     FRONTEND_EXTRACTION_FAILED = 'AIMDEP00201',
     BACKEND_GENERATION_FAILED = 'AIMDEP00202',
+    AI_MODEL_ERROR = 'AIMDEP00203', // AI 모델 호출 실패
 
     // aim-hello-api Specific Errors (1200-1299)
     AI_MODEL_UNAVAILABLE = 'AIMDEP01200', // aim-hello-api 전용: Gemini API 연결 실패
@@ -36,6 +37,7 @@ export const ErrorCodeMetadata: Record<ErrorCode, { message: string; httpStatus:
     [ErrorCode.AI_REFACTORING_FAILED]: { message: 'AI 리팩토링에 실패했습니다.', httpStatus: 500 },
     [ErrorCode.FRONTEND_EXTRACTION_FAILED]: { message: '프론트엔드 코드 추출에 실패했습니다.', httpStatus: 500 },
     [ErrorCode.BACKEND_GENERATION_FAILED]: { message: '벡엔드 코드 생성에 실패했습니다.', httpStatus: 500 },
+    [ErrorCode.AI_MODEL_ERROR]: { message: 'AI 모델 호출에 실패했습니다.', httpStatus: 500 },
     [ErrorCode.AI_MODEL_UNAVAILABLE]: { message: 'AI 모델에 연결할 수 없습니다.', httpStatus: 500 },
     [ErrorCode.LAMBDA_TIMEOUT]: { message: 'Lambda 실행 시간이 초과되었습니다.', httpStatus: 504 },
     [ErrorCode.LAMBDA_DEPLOYMENT_FAILED]: { message: 'Lambda 배포에 실패했습니다.', httpStatus: 500 },
