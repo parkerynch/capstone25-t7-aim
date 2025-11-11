@@ -7,6 +7,7 @@
         "dev": "nodemon",
         "build": "tsc && tsc-alias",
         "start": "node dist/apps/backend/src/server.js",
+        "start:prod": "NODE_ENV=production npm start",
         "test": "jest --watchAll"
     },
     "keywords": [],

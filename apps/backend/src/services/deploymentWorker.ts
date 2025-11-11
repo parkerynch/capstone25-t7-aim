@@ -1,5 +1,5 @@
 import { Log } from '../models/log.model';
-import { generateReadOnlyUrl, uploadToS3 } from './uploadService';
+import { generateReadOnlyUrl, uploadProduct, uploadToS3 } from './uploadService';
 import axios from 'axios';
 import { IDeployment, Deployment } from '../models/deployment.model';
 import { AimException, ErrorCode } from '@shared/errors';
@@ -73,16 +73,49 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
             const zipBase64 = Buffer.from(zipBuffer).toString('base64');
 
-            // Upload ZIP to S3
-            const { key } = await uploadToS3(zipBase64, 'monorepo.zip');
-            await log(`ZIP uploaded to S3 with key: ${key}`);
+            // [수정] packageName을 사용하여 baseTitle 정의
+            const baseTitle = analysisResult.packageName || `monorepo-${deployment._id as string}`;
 
-            // Generate signed URL for the uploaded ZIP
-            const { signedUrl: zipSignedUrl } = await generateReadOnlyUrl(key);
-            await log(`Generated signed URL for ZIP: ${zipSignedUrl}`);
+            // [신규] 1. 'uploadProduct' API (운영)에 사용할 title (확장자 없음)
+            // API 명세(image_dc2ffb.png)에 따라 package.json의 name을 그대로 사용
+            const productTitle = baseTitle;
 
-            // Update deployment with monorepo ZIP URL
-            await Deployment.updateOne({ _id: deployment._id }, { $set: { monorepoZipUrl: zipSignedUrl } });
+            // [신규] 2. 'uploadToS3' (개발)에 사용할 fileName (확장자 포함)
+            // S3 Key는 파일명을 명시하는 것이 좋으므로 .zip을 포함
+            const productFileName = `${baseTitle}.zip`;
+
+            await log(`Using productTitle (for Prod API): ${productTitle}`);
+            await log(`Using productFileName (for Dev S3): ${productFileName}`);
+
+            let s3Uri: string; // 최종 URL을 저장할 변수
+
+            // NODE_ENV 값에 따라 업로드 로직 분기
+            if (process.env.NODE_ENV === 'production') {
+                // --- 1. 운영 환경: 실제 Product API로 업로드 ---
+
+                await log('Production environment. Uploading to real Product API...');
+                const response = await uploadProduct({
+                    data: zipBase64,
+                    title: productTitle,
+                });
+                s3Uri = response.s3Uri;
+                await log(`ZIP uploaded to Product API. s3Uri: ${s3Uri}`);
+            } else {
+                // --- 2. 테스트/개발 환경: 예전 S3(LocalStack) 로직으로 업로드 ---
+                await log(`[MOCK] Development environment. Uploading to internal S3 (LocalStack)...`);
+
+                // 1. S3에 업로드
+                const { key } = await uploadToS3(zipBase64, productFileName);
+                await log(`ZIP uploaded to S3 with key: ${key}`);
+
+                // 2. S3 URL 생성
+                const { signedUrl } = await generateReadOnlyUrl(key);
+                s3Uri = signedUrl; // s3Uri 변수에 할당
+                await log(`Generated signed URL for ZIP: ${s3Uri}`);
+            }
+
+            // Deployment DB에 monorepoZipUrl 필드를 새 s3Uri로 업데이트
+            await Deployment.updateOne({ _id: deployment._id }, { $set: { monorepoZipUrl: s3Uri } });
         } else {
             await log('No monorepo files generated.');
         } // Check if refactoring was successful

@@ -3,6 +3,7 @@ import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_BUCKET, useLocalStack } from '../lib/s3Client';
 import { v4 as uuidv4 } from 'uuid';
 import { AimException, ErrorCode } from '@shared/errors';
+import axios from 'axios';
 
 export const uploadToS3 = async (base64Data: string, fileName: string) => {
     const key = `${uuidv4()}-${fileName}`;
@@ -46,3 +47,40 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
 
     return { signedUrl: finalSignedUrl };
 };
+
+// [중요] API_KEY가 deploymentWorker의 환경 변수에 설정되어 있어야 합니다.
+const apiKey = process.env.API_KEY || 'your-api-key';
+
+const api = axios.create({
+    baseURL: 'https://8kcc2tiiqk.execute-api.ap-northeast-2.amazonaws.com',
+    headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+    },
+    timeout: 60_000,
+    maxBodyLength: Infinity,
+});
+
+export interface ProductUploadBody {
+    data: string; // Base64 인코딩된 Zip 데이터
+    title: string;
+    version?: string;
+}
+
+export interface UploadResponse {
+    s3Uri: string; // 업로드 결과 URL
+}
+
+export async function uploadProduct(
+    body: ProductUploadBody,
+    productId: number = 0, // 현재는 0으로 고정 사용
+): Promise<UploadResponse> {
+    try {
+        const path = `/prod/products/${productId}/upload`;
+        const res = await api.post<UploadResponse>(path, body);
+        return res.data;
+    } catch (error) {
+        console.error('Failed to upload product to external API:', error);
+        throw new AimException(ErrorCode.S3_UPLOAD_FAILED, `Product API upload failed`);
+    }
+}

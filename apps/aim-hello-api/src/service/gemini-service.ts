@@ -45,6 +45,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         let originalTypeCode: string | null = null;
         let originalAppCode: string | null = null;
         let originalMetadataJson: Record<string, any> | null = null;
+        let originalPackageName: string | null = null; // [신규] package.json의 name 저장
 
         // [수정] refactor-prepare.sh가 복사하는 Root 파일 목록 (index.html만)
         const userZipRootFiles = new Set([
@@ -64,10 +65,20 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             } else if (filePath === 'metadata.json') {
                 try {
                     originalMetadataJson = JSON.parse(content);
-                    frontendSrcFiles.push({ path: 'metadata.json', content }); //
                 } catch (e) {
-                    console.warn('Could not parse metadata.json.', e);
+                    console.warn('Could not parse metadata.json. Using default empty object.', e);
+                    originalMetadataJson = {}; // 기본값 설정
                 }
+                frontendSrcFiles.push({ path: 'metadata.json', content }); //
+            } else if (filePath === 'package.json') {
+                try {
+                    const packageJson = JSON.parse(content);
+                    originalPackageName = packageJson.name || null;
+                    console.log(`Found package.json name: ${originalPackageName}`);
+                } catch (e) {
+                    console.warn('Could not parse package.json.', e);
+                }
+                // (주의) prepare.sh 기준에 따라 이 파일은 복사하지 않으므로, srcFiles에 push하지 않습니다.
             } else if (userZipRootFiles.has(filePath)) {
                 frontendRootFiles.push({ path: filePath, content }); // index.html
             }
@@ -340,6 +351,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         console.log('generateRefactoredCode finished successfully.');
         return {
             monorepoFiles,
+            packageName: originalPackageName,
         };
     } catch (error) {
         console.error('Error in generateRefactoredCode:', error);

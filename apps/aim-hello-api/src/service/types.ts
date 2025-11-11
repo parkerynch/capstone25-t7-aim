@@ -37,4 +37,5 @@ export default $LUT;
  */
 export interface GeneratedContent {
     monorepoFiles: { path: string; content: string }[];
+    packageName: string;
 }
