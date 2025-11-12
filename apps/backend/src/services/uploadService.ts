@@ -52,7 +52,7 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
 const apiKey = process.env.API_KEY || 'your-api-key';
 
 const api = axios.create({
-    baseURL: 'https://openapi.eureka.codes/d1/codes/0/upload',
+    baseURL: 'https://openapi.eureka.codes/d1',
     headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -76,7 +76,7 @@ export async function uploadProduct(
     productId: number = 0, // 현재는 0으로 고정 사용
 ): Promise<UploadResponse> {
     try {
-        const path = `/prod/products/${productId}/upload`;
+        const path = `/codes/${productId}/upload`;
         const res = await api.post<UploadResponse>(path, body);
         return res.data;
     } catch (error) {
