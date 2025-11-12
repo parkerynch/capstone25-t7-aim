@@ -52,7 +52,7 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
 const apiKey = process.env.API_KEY || 'your-api-key';
 
 const api = axios.create({
-    baseURL: 'https://8kcc2tiiqk.execute-api.ap-northeast-2.amazonaws.com',
+    baseURL: 'https://openapi.eureka.codes/d1/codes/0/upload',
     headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
