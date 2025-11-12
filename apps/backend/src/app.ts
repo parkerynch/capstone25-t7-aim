@@ -3,6 +3,11 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { ApiResponse, HelloResponse } from '@shared/types';
+import mongoose from 'mongoose';
+import { s3Client } from './lib/s3Client';
+import projectsRouter from './apis/projects';
+import deploymentsRouter from './apis/deployments';
+import { AimException, ErrorCode } from '@shared/errors';
 
 const app = express();
 
@@ -19,8 +24,33 @@ console.log(`  - FRONTEND_URL: ${FRONTEND_URL}`);
 console.log(`  - LOG_LEVEL: ${LOG_LEVEL}`);
 console.log('---');
 
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/aim';
+
+mongoose
+    .connect(MONGO_URI)
+    .then(() => console.log('✅ MongoDB에 성공적으로 연결되었습니다.'))
+    .catch(err => console.error('❌ MongoDB 연결 실패:', err));
+
+console.log('✅ S3 Client가 성공적으로 생성되었습니다.');
+
 app.use(cors());
 app.use(express.json());
+
+app.use('/api', projectsRouter);
+app.use('/api', deploymentsRouter);
+
+// 글로벌 에러 핸들링 미들웨어 (Express 5 네이티브 비동기 에러 처리)
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (err instanceof AimException) {
+        const aimError = err as AimException;
+        res.status(aimError.httpStatus).send(aimError.toErrorResponse());
+    } else {
+        // 알 수 없는 에러
+        console.error('Unknown error:', err);
+        const fallbackError = new AimException(ErrorCode.JSON_PARSE_ERROR);
+        res.status(fallbackError.httpStatus).send(fallbackError.toErrorResponse());
+    }
+});
 
 app.get('/api/hello', (req, res) => {
     const response: ApiResponse<HelloResponse> = {

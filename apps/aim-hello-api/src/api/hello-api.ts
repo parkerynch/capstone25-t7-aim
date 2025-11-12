@@ -11,6 +11,8 @@
 import { $T, $U, _log, NextHandler, GeneralWEBController, NextContext } from 'lemon-core';
 import { Model, TestModel } from '../service/model';
 import { HelloService } from '../service/service';
+import { generateRefactoredCode } from '../service/gemini-service';
+import { AimException, ErrorCode } from '../../../../packages/shared/src/errors';
 const NS = $U.NS('hello', 'yellow'); // NAMESPACE TO BE PRINTED.
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -81,7 +83,7 @@ export class HelloAPIController extends GeneralWEBController {
         _log(NS, `${errScope} ...`);
         const i = $U.N(id, 0);
         const val = this.BUFF[i];
-        if (val === undefined) throw new Error(`404 NOT FOUND - id:${id}`);
+        if (val === undefined) throw new AimException(ErrorCode.NOT_FOUND);
         return this.modelAsView({ ...val, id: `${i}` });
     };
 
@@ -115,8 +117,8 @@ export class HelloAPIController extends GeneralWEBController {
         //* append into array.
         _log(NS, errScope);
         const i = $U.N(id, 0);
-        if (i) throw new Error(`@id[${id}] (number) is invalid - ${errScope}`);
-        if (!body?.name) throw new Error(`.name (string) is required - ${errScope}`);
+        if (i) throw new AimException(ErrorCode.INVALID_INPUT);
+        if (!body?.name) throw new AimException(ErrorCode.INVALID_INPUT);
         const name = $T.S2(body?.name, '', ' ').trim(); // clear new-lines
         const model: TestModel = { name, _id: `${this.BUFF.length}` };
         this.BUFF.push(model);
@@ -160,6 +162,51 @@ export class HelloAPIController extends GeneralWEBController {
         const i = $U.N(node?.id, 0);
         delete this.BUFF[i];
         return this.modelAsView(node);
+    };
+
+    /**
+     * handler for gemini requests. (cmd = 'gemini')
+     * 이제 이 메소드가 'cmd'가 'gemini'인 모든 요청을 받습니다.
+     * 'id' 값으로 분기 처리를 합니다.
+     *
+     * ```sh
+     * $ http POST ':8000/hello/refactor-code/gemini' keyword=... s3Url=...
+     * ```
+     */
+    public doPostGemini: NextHandler = async (id, param, body, context) => {
+        const errScope = `doPostGemini(${this.type()}/${id ?? ''})`;
+        _log(NS, `${errScope} ...`);
+
+        // [수정] 'id' 값으로 분기합니다.
+        if (id == 'refactor-code') {
+            const s3Url = body?.s3Url;
+
+            if (!s3Url) {
+                throw new AimException(ErrorCode.INVALID_INPUT);
+            }
+
+            _log(NS, `[DEBUG] Received S3 URL: ${s3Url}`);
+
+            try {
+                // Call Gemini ZIP analysis service
+                const result = await generateRefactoredCode({ s3Url });
+                _log(NS, `[DEBUG] Code refactoring completed successfully`);
+
+                return result;
+            } catch (error) {
+                _log(NS, `[ERROR] Code refactoring failed: ${error}`);
+                throw new AimException(ErrorCode.AI_REFACTORING_FAILED);
+            }
+        }
+
+        // 예시: /hello/world/gemini 요청
+        if (id == 'world') {
+            return { body };
+        }
+
+        // 일치하는 'id'가 없을 경우
+        _log(NS, `!WARN! Unhandled id in doPostGemini: ${id}`);
+        throw new AimException(ErrorCode.NOT_FOUND, `Unknown gemini command: ${id}`);
     };
 }
 

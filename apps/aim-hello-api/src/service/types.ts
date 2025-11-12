@@ -31,3 +31,11 @@ const $LUT = {
  * export as default.
  */
 export default $LUT;
+
+/**
+ * Types for code separation
+ */
+export interface GeneratedContent {
+    monorepoFiles: { path: string; content: string }[];
+    packageName: string;
+}
