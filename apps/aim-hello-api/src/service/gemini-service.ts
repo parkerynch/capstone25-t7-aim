@@ -3,10 +3,14 @@ import axios from 'axios';
 import JSZip from 'jszip';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+import * as yaml from 'js-yaml';
 import type { GeneratedContent } from './types';
 import { AimException, ErrorCode } from '../../../../packages/shared/src/errors';
-import * as yaml from 'js-yaml';
 import { loadPromptFile, parseAiResponse, camelToDash, getFileMap } from '../utils';
+
+// Load environment variables from .env file
+dotenv.config({ override: true });
 
 // --- 환경 변수 및 AI 클라이언트 설정 ---
 if (!process.env.GEMINI_API_KEY) {
@@ -253,14 +257,14 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             const envFile = templateZip.file(backendEnvPath);
             if (envFile) {
                 try {
-                    const envData: any = yaml.load(await envFile.async('text'));
-                    if (envData && envData.local) {
-                        envData.local.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
-                        if (envData.dev) envData.dev.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
-                        if (envData.prod) envData.prod.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
-                        templateZip.file(backendEnvPath, yaml.dump(envData, { indent: 2, lineWidth: -1 }));
-                        console.log('Set GEMINI_API_KEY in backend none.yml (Logical Fix)');
-                    }
+                    let envContent = await envFile.async('text');
+                    const envData = yaml.load(envContent) as any;
+                    if (envData.local) envData.local.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
+                    if (envData.dev) envData.dev.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
+                    if (envData.prod) envData.prod.GEMINI_API_KEY = originalMetadataJson.geminiApiKey;
+                    envContent = yaml.dump(envData);
+                    templateZip.file(backendEnvPath, envContent);
+                    console.log('Injected GEMINI_API_KEY into backend none.yml');
                 } catch (e) {
                     console.error('Error modifying none.yml:', e);
                 }
