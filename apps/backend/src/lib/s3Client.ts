@@ -4,7 +4,7 @@ export const S3_BUCKET = process.env.S3_BUCKET || 'aim-deploy-bucket';
 export const S3_REGION = process.env.S3_REGION || 'ap-northeast-2';
 
 // LocalStack 사용 여부는 명시적 환경변수 USE_LOCALSTACK=true 로 제어합니다.
-export const useLocalStack = process.env.USE_LOCALSTACK || 'true';
+export const useLocalStack = process.env.USE_LOCALSTACK === 'true';
 
 const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID;
 const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY;
