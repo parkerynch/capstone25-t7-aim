@@ -53,7 +53,14 @@
     **Frontend 환경 변수:**
 
     ```bash
-    cp apps/frontend/.env.example apps/frontend/.env
+    # Frontend는 별도 .env 파일이 필요하지 않음 (필요시 추가)
+    ```
+
+    **AIM Hello API 환경 변수:**
+
+    ```bash
+    # aim-hello-api는 env/none.yml을 사용
+    # 필요시 GEMINI_API_KEY 등 설정
     ```
 
     필요에 따라 생성된 `.env` 파일의 값을 수정하세요.
@@ -112,99 +119,172 @@
 ```
 capstone25-t7-aim/
 ├── apps/
-│   ├── frontend/               # React + Vite 애플리케이션
-│   │   ├── public/
-│   │   │   └── aim_logo.svg    # 브랜드 자산
-│   │   ├── src/
-│   │   │   ├── apis/           # API 호출 모듈 (통합)
-│   │   │   ├── components/     # 재사용 가능한 UI 컴포넌트
-│   │   │   ├── pages/          # 페이지 컴포넌트
-│   │   │   ├── utils/          # 프론트 전용 유틸
-│   │   │   ├── App.tsx
-│   │   │   ├── main.tsx
-│   │   │   ├── index.css
-│   │   │   └── vite-env.d.ts
+│   ├── aim-hello-api/          # AIM 분석 API (Gemini 기반)
+│   │   ├── data/               # 프롬프트 자산
+│   │   │   ├── system-prompt.json
+│   │   │   ├── system-prompt.yml
+│   │   │   ├── user-prompt-00.yml
+│   │   │   └── user-prompt.yml
+│   │   ├── env/                # 환경 설정
+│   │   │   └── none.yml
+│   │   ├── logs/               # 로그 파일
+│   │   │   └── refactoring/
+│   │   ├── refactor/           # 리팩토링 프롬프트
+│   │   │   ├── backend/
+│   │   │   │   ├── SYSTEM.md
+│   │   │   │   └── USER.md
+│   │   │   └── frontend/
+│   │   │       ├── SYSTEM.md
+│   │   │       └── USER.md
+│   │   ├── src/                # 소스 코드
+│   │   │   ├── api/
+│   │   │   │   ├── hello-api.spec.ts
+│   │   │   │   └── hello-api.ts
+│   │   │   ├── service/
+│   │   │   │   ├── gemini-service.ts
+│   │   │   │   ├── model.ts
+│   │   │   │   ├── service.spec.ts
+│   │   │   │   ├── service.ts
+│   │   │   │   ├── types.ts
+│   │   │   │   └── views.ts
+│   │   │   ├── engine.ts
+│   │   │   ├── express.ts
+│   │   │   ├── index.ts
+│   │   │   └── utils.ts
+│   │   ├── tmp/                # 임시 파일
+│   │   │   └── refactored/
+│   │   │       └── response.json
+│   │   ├── handler.js
+│   │   ├── jest.config.json
 │   │   ├── package.json
-│   │   ├── vite.config.ts
-│   │   ├── tsconfig.json
+│   │   ├── README.md
 │   │   ├── tsconfig.build.json
-│   │   ├── tailwind.config.js
-│   │   ├── postcss.config.js
-│   │   └── jest.config.ts
+│   │   └── tsconfig.json
 │   │
-│   └── backend/                # Express API 서버
+│   ├── backend/                # Express API 서버
+│   │   ├── src/
+│   │   │   ├── apis/           # API 라우트
+│   │   │   │   ├── deployments.ts
+│   │   │   │   └── projects.ts
+│   │   │   ├── lib/            # 공용 라이브러리
+│   │   │   │   └── s3Client.ts
+│   │   │   ├── models/         # Mongoose 모델
+│   │   │   │   ├── deployment.model.ts
+│   │   │   │   ├── log.model.ts
+│   │   │   │   └── project.model.ts
+│   │   │   ├── repositories/   # 데이터 접근 계층
+│   │   │   │   ├── deployment.repository.ts
+│   │   │   │   └── project.repository.ts
+│   │   │   ├── services/       # 비즈니스 로직
+│   │   │   │   ├── deploymentWorker.ts
+│   │   │   │   ├── queueService.ts
+│   │   │   │   └── uploadService.ts
+│   │   │   ├── utils/          # 백엔드 유틸
+│   │   │   │   └── formatErrorMessage.ts
+│   │   │   ├── app.test.ts
+│   │   │   ├── app.ts
+│   │   │   └── server.ts
+│   │   ├── jest.config.ts
+│   │   ├── nodemon.json
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   ├── tsconfig.json
+│   │   └── .env.example
+│   │
+│   └── frontend/               # React + Vite 애플리케이션
+│       ├── public/
 │       ├── src/
-│       │   ├── apis/           # API 라우트 (정리/통합)
-│       │   ├── models/         # Mongoose 모델
-│       │   ├── services/       # 비즈니스 로직/작업자
-│       │   ├── repositories/   # 데이터 접근 계층
-│       │   ├── lib/            # 공용 라이브러리 (예: S3 client 등)
-│       │   ├── utils/          # 백엔드 유틸
-│       │   ├── app.ts          # Express 앱 설정
-│       │   └── server.ts       # 서버 진입점
-│       ├── package.json
-│       ├── tsconfig.json
+│       │   ├── apis/           # API 호출 모듈
+│       │   │   ├── deploymentApi.ts
+│       │   │   └── projectApi.ts
+│       │   ├── assets/
+│       │   ├── components/     # UI 컴포넌트
+│       │   │   ├── deployment/
+│       │   │   ├── layout/
+│       │   │   └── project/
+│       │   ├── pages/          # 페이지 컴포넌트
+│       │   │   ├── DeployPage.tsx
+│       │   │   └── ...
+│       │   ├── utils/          # 프론트엔드 유틸
+│       │   ├── App.tsx
+│       │   ├── index.css
+│       │   ├── main.tsx
+│       │   └── vite-env.d.ts
+│       ├── index.html
 │       ├── jest.config.ts
-│       ├── nodemon.json
-│       └── .env.example
+│       ├── package.json
+│       ├── postcss.config.js
+│       ├── README.md
+│       ├── tailwind.config.js
+│       ├── tsconfig.build.json
+│       ├── tsconfig.json
+│       └── vite.config.ts
 │
 ├── packages/
-│   └── shared/            # 공유 타입과 유틸리티
+│   └── shared/                 # 공유 타입과 유틸리티
 │       ├── src/
-│       │   ├── index.ts   # 메인 익스포트
-│       │   ├── types.ts   # 공유 TypeScript 타입
-│       │   └── utils.ts   # 공유 유틸리티 함수
+│       │   ├── errors/
+│       │   ├── index.ts
+│       │   ├── types.js
+│       │   ├── types.ts
+│       │   └── utils.ts
 │       ├── package.json
-│       ├── tsconfig.json
-│       └── jest.config.json
+│       ├── README.md
+│       └── tsconfig.json
 │
-├── apps/
-│   └── aim-hello-api/     # AIM 분석 API
-│       ├── src/
-│       │   ├── api/
-│       │   ├── service/
-│       │   ├── engine.ts
-│       │   ├── express.ts
-│       │   └── index.ts
-│       ├── handler.js
-│       ├── jest.config.json
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── tsconfig.build.json
-│       └── env/
+├── docs/                       # 문서
+│   └── errors.md
 │
-├── sample/                # 샘플 파일들
-├── tmp/                   # 임시 파일들
-├── volume/                # Docker 볼륨
+├── sample/                     # 샘플 파일들
+│
+├── tmp/                        # 임시 파일들
+│
+├── volume/                     # Docker 볼륨
 │   ├── cache/
+│   │   ├── machine.json
+│   │   ├── server.test.pem
+│   │   ├── server.test.pem.crt
+│   │   ├── server.test.pem.key
 │   ├── lib/
-│   └── logs/
+│   ├── logs/
+│   ├── state/
+│   └── tmp/
 │
-├── docker-compose.yml     # Docker Compose 설정
-├── package.json           # 루트 워크스페이스 설정
+├── docker-compose.yml          # Docker Compose 설정
+├── GEMINI.md                   # Gemini 관련 문서
+├── init-aws.sh                 # AWS 초기화 스크립트
 ├── LICENSE
-├── README.md
-└── GEMINI.md              # Gemini 관련 문서
+├── package.json                # 루트 워크스페이스 설정
+└── README.md
 ```
 
 ### 주요 디렉토리 설명
 
-- `apps/frontend` — Vite 기반 React 앱
-    - `src/apis` 프론트 API 호출 모듈 통합
-    - `src/components`, `src/pages`, `src/utils`
-    - `public/aim_logo.svg` 브랜드 자산
+- `apps/aim-hello-api` — AIM 분석 API (Gemini 기반)
+    - `data/` 프롬프트 자산: system/user prompt (json/yml)
+    - `env/` 환경 설정 파일
+    - `refactor/` 백엔드/프론트엔드 리팩토링 프롬프트
+    - `src/service/gemini-service.ts` Gemini 연계 서비스
+    - `tmp/refactored/` 리팩토링 결과 임시 저장
 
 - `apps/backend` — Express REST API
     - `src/apis` 라우트, `src/services` 비즈니스 로직, `src/models` 데이터 모델
     - `src/repositories`, `src/lib`, `src/utils` 로 관심사 분리
+    - `src/lib/s3Client.ts` S3 클라이언트
 
-- `apps/aim-hello-api` — AIM 분석 API (Gemini)
-    - `data/` 프롬프트 자산: system/user prompt (json/yml)
-    - `src/service/gemini-service.ts` Gemini 연계 서비스
-    - ENV로 프롬프트 디렉터리/프로필 선택 가능(아래 참고)
+- `apps/frontend` — Vite 기반 React 앱
+    - `src/apis` API 호출 모듈, `src/components`, `src/pages`, `src/utils`
+    - `public/` 정적 자산
 
 - `packages/shared` — 공통 타입/유틸
+    - `src/errors/` 에러 클래스
+    - `src/types.ts` 공유 타입
+    - `src/utils.ts` 공유 유틸리티
 
+- `docs/` — 추가 문서
+- `sample/` — 샘플 파일들
+- `specs/` — 프로젝트 스펙 문서
+- `tmp/` — 임시 파일들
 - `volume/` — Docker 영구 저장소 (LocalStack/MongoDB 등)
 
 ## 💻 개발
@@ -390,4 +470,3 @@ npm run format:check
 - **Prettier** - 코드 포매팅
 - **ts-node** - TypeScript 실행
 - **concurrently** - 여러 명령어 동시 실행
-
