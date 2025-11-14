@@ -3,7 +3,6 @@ import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_BUCKET, useLocalStack } from '../lib/s3Client';
 import { v4 as uuidv4 } from 'uuid';
 import { AimException, ErrorCode } from '@shared/errors';
-import axios from 'axios';
 
 export const uploadToS3 = async (base64Data: string, fileName: string) => {
     const key = `${uuidv4()}-${fileName}`;
@@ -51,15 +50,12 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
 // [중요] API_KEY가 deploymentWorker의 환경 변수에 설정되어 있어야 합니다.
 const apiKey = process.env.API_KEY || 'your-api-key';
 
-const api = axios.create({
-    baseURL: 'https://openapi.eureka.codes/v1',
-    headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-    },
-    timeout: 60_000,
-    maxBodyLength: Infinity,
-});
+// API 키 로드 확인
+if (process.env.API_KEY) {
+    console.log(`✅ API_KEY loaded: ${apiKey.substring(0, 8)}...`);
+} else {
+    console.warn('⚠️ API_KEY not found in environment, using default');
+}
 
 export interface ProductUploadBody {
     data: string; // Base64 인코딩된 Zip 데이터
@@ -76,9 +72,30 @@ export async function uploadProduct(
     productId: number = 0, // 현재는 0으로 고정 사용
 ): Promise<UploadResponse> {
     try {
-        const path = `/codes/${productId}/upload`;
-        const res = await api.post<UploadResponse>(path, body);
-        return res.data;
+        const baseURL = 'https://openapi.eureka.codes/d1';
+        const useMock = true; // mock 모드 사용 여부
+        const path = `/codes/${productId}/upload${useMock ? '?mock=1' : ''}`;
+        const apiUrl = `${baseURL}${path}`;
+
+        console.log(`> Uploading to: ${apiUrl}`);
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+            },
+            body: JSON.stringify(body),
+        });
+
+        console.log('response:', response);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result;
     } catch (error) {
         console.error('Failed to upload product to external API:', error);
         throw new AimException(ErrorCode.S3_UPLOAD_FAILED, `Product API upload failed`);

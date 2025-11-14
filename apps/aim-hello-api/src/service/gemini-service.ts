@@ -16,7 +16,6 @@ dotenv.config({ override: true });
 if (!process.env.GEMINI_API_KEY) {
     throw new AimException(ErrorCode.INVALID_INPUT, 'API_KEY environment variable not set');
 }
-console.log(`✅ GEMINI_API_KEY loaded: ${process.env.GEMINI_API_KEY}`);
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- 메인 서비스 함수 ---
