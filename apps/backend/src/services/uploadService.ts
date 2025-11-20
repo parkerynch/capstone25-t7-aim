@@ -50,9 +50,16 @@ export const generateReadOnlyUrl = async (s3Key: string) => {
 
 // [중요] API_KEY가 deploymentWorker의 환경 변수에 설정되어 있어야 합니다.
 const apiKey = process.env.API_KEY || 'your-api-key';
+const isProduction = process.env.NODE_ENV === 'production';
 
+// 개발/운영 환경에 따라 baseURL 분기
+const baseURL = isProduction
+    ? 'https://openapi.eureka.codes/v1' // 운영
+    : 'https://openapi.eureka.codes/d1'; // 개발
+
+// axios 인스턴스 생성
 const api = axios.create({
-    baseURL: 'https://openapi.eureka.codes/d1',
+    baseURL,
     headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -60,6 +67,10 @@ const api = axios.create({
     timeout: 60_000,
     maxBodyLength: Infinity,
 });
+
+console.log(`📡 Product API Config: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+console.log(`   Base URL: ${baseURL}`);
+console.log(`   API Key: ${apiKey.substring(0, 8)}...`);
 
 export interface ProductUploadBody {
     data: string; // Base64 인코딩된 Zip 데이터
@@ -76,11 +87,68 @@ export async function uploadProduct(
     productId: number = 0, // 현재는 0으로 고정 사용
 ): Promise<UploadResponse> {
     try {
-        const path = `/codes/${productId}/upload`;
-        const res = await api.post<UploadResponse>(path, body);
-        return res.data;
+        const useMock = false; // mock 모드 비활성화
+        const path = `/codes/${productId}/upload${useMock ? '?mock=1' : ''}`;
+
+        console.log(`> Uploading to: ${api.defaults.baseURL}${path}`);
+
+        console.log('\n=== REQUEST BODY FOR POSTMAN ===');
+        console.log(JSON.stringify(body, null, 2));
+        console.log('=================================\n');
+
+        // axios로 POST 요청
+        const response = await api.post(path, body);
+
+        // axios response 확인
+        console.log('\n=== UPLOAD RESPONSE ===');
+        console.log('Status:', response.status, response.statusText);
+        console.log('Response Data:');
+        console.log(JSON.stringify(response.data, null, 2));
+        console.log('======================\n');
+
+        // 1. Upload response에서 id 추출
+        if (response.data.id) {
+            const deploymentId = response.data.id;
+            console.log(`📊 Deployment ID: ${deploymentId}`);
+
+            // 2. GET /codes/{id}@2/product 요청
+            const productPath = `/codes/${deploymentId}@2/product`;
+            console.log(`🔍 Fetching product info: ${api.defaults.baseURL}${productPath}\n`);
+
+            try {
+                const productResponse = await api.get(productPath);
+
+                console.log('=== PRODUCT RESPONSE ===');
+                console.log('Full Response Data:');
+                console.log(JSON.stringify(productResponse.data, null, 2));
+                console.log('========================\n');
+
+                // 3. stack$.websiteEndpoint와 progress$ 확인
+                if (productResponse.data.stack$) {
+                    console.log('📦 Stack Info:');
+                    console.log(JSON.stringify(productResponse.data.stack$, null, 2));
+
+                    if (productResponse.data.stack$.websiteEndpoint) {
+                        console.log(`\n🌐 Website Endpoint: ${productResponse.data.stack$.websiteEndpoint}`);
+                    }
+                }
+
+                if (productResponse.data.progress$) {
+                    console.log('\n⏳ Deployment Progress:');
+                    console.log(JSON.stringify(productResponse.data.progress$, null, 2));
+                }
+            } catch (productError) {
+                console.log('⚠️ Could not fetch product info:', productError);
+            }
+        }
+
+        return response.data;
     } catch (error) {
         console.error('Failed to upload product to external API:', error);
+        if (axios.isAxiosError(error)) {
+            console.error('Response status:', error.response?.status);
+            console.error('Response data:', error.response?.data);
+        }
         throw new AimException(ErrorCode.S3_UPLOAD_FAILED, `Product API upload failed`);
     }
 }

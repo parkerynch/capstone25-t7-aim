@@ -10,9 +10,16 @@ import { loadPromptFile, parseAiResponse, camelToDash, getFileMap } from '../uti
 
 // --- 환경 변수 및 AI 클라이언트 설정 ---
 if (!process.env.GEMINI_API_KEY) {
+    console.error('❌ GEMINI_API_KEY not found in environment variables');
     throw new AimException(ErrorCode.INVALID_INPUT, 'API_KEY environment variable not set');
 }
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const apiKey = process.env.GEMINI_API_KEY;
+console.log('✅ GEMINI_API_KEY loaded successfully');
+console.log(`   Key prefix: ${apiKey.substring(0, 8)}...`);
+console.log(`   Key length: ${apiKey.length} characters`);
+
+const ai = new GoogleGenAI({ apiKey });
 
 // --- 메인 서비스 함수 ---
 export async function generateRefactoredCode($param: { s3Url: string }): Promise<GeneratedContent> {
@@ -147,7 +154,39 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             config: { systemInstruction: beSystemPrompt, temperature: 0.8, topP: 0.95 },
         };
 
-        const beResult = await ai.models.generateContent(beParams);
+        const maxRetries = 3;
+        let lastError: unknown;
+        let beResult;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`Calling Gemini API for Backend (attempt ${attempt}/${maxRetries})...`);
+                beResult = await ai.models.generateContent(beParams);
+                break;
+            } catch (error) {
+                lastError = error;
+                console.error(`❌ Gemini API call failed (Backend) - attempt ${attempt}:`, error);
+
+                if (error instanceof Error) {
+                    console.error('   Error message:', error.message);
+                }
+
+                if (attempt < maxRetries) {
+                    const waitTime = Math.pow(2, attempt) * 1000;
+                    console.log(`   Retrying in ${waitTime / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+        }
+
+        if (!beResult) {
+            console.error('❌ All Gemini API retry attempts failed (Backend)');
+            throw new AimException(
+                ErrorCode.AI_MODEL_ERROR,
+                `Gemini API failed after ${maxRetries} attempts: ${lastError}`,
+            );
+        }
+
         const beResponseText = beResult.text.trim();
         if (!beResponseText) {
             throw new AimException(ErrorCode.AI_MODEL_ERROR, 'AI response (Backend) is empty.');
@@ -172,7 +211,37 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             config: { systemInstruction: feSystemPrompt, temperature: 0.8, topP: 0.95 },
         };
 
-        const feResult = await ai.models.generateContent(feParams);
+        let feResult;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`Calling Gemini API for Frontend (attempt ${attempt}/${maxRetries})...`);
+                feResult = await ai.models.generateContent(feParams);
+                break;
+            } catch (error) {
+                lastError = error;
+                console.error(`❌ Gemini API call failed (Frontend) - attempt ${attempt}:`, error);
+
+                if (error instanceof Error) {
+                    console.error('   Error message:', error.message);
+                }
+
+                if (attempt < maxRetries) {
+                    const waitTime = Math.pow(2, attempt) * 1000;
+                    console.log(`   Retrying in ${waitTime / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+        }
+
+        if (!feResult) {
+            console.error('❌ All Gemini API retry attempts failed (Frontend)');
+            throw new AimException(
+                ErrorCode.AI_MODEL_ERROR,
+                `Gemini API failed after ${maxRetries} attempts: ${lastError}`,
+            );
+        }
+
         const feResponseText = feResult.text.trim();
         if (!feResponseText) {
             throw new AimException(ErrorCode.AI_MODEL_ERROR, 'AI response (Frontend) is empty.');
@@ -294,7 +363,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
                 return;
             }
 
-            let content = file.content;
+            const content = file.content;
 
             // 2단계에서 'src/'를 제거했으므로, 다시 붙여서 템플릿 경로와 조합
             const finalSrcPath = templateRootPath + `apps/frontend/src/${file.path}`;

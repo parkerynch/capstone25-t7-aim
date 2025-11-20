@@ -52,13 +52,40 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
 
         // Send pre-signed URL to AI analysis service
         let analyzeResponse;
-        try {
-            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/refactor-code/gemini`, { s3Url: signedUrl });
-        } catch (axiosError) {
-            const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
-            console.error(errorDetails);
-            throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
+        const maxRetries = 3;
+        let lastError: unknown;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await log(`AI 분석 서비스 호출 중... (시도 ${attempt}/${maxRetries})`);
+                analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/refactor-code/gemini`, {
+                    s3Url: signedUrl,
+                });
+                await log(`AI 분석 서비스 응답 성공`);
+                break;
+            } catch (axiosError) {
+                lastError = axiosError;
+                const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
+                console.error(`❌ AI 분석 실패 (시도 ${attempt}/${maxRetries}):`, errorDetails);
+
+                if (attempt < maxRetries) {
+                    const waitTime = Math.pow(2, attempt) * 1000;
+                    await log(`${waitTime / 1000}초 후 재시도...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                } else {
+                    console.error(`❌ 모든 재시도 실패 (${maxRetries}회)`);
+                    throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
+                }
+            }
         }
+
+        if (!analyzeResponse) {
+            throw new AimException(
+                ErrorCode.AI_MODEL_UNAVAILABLE,
+                `AI analysis failed after ${maxRetries} attempts: ${lastError}`,
+            );
+        }
+
         const analysisResult = analyzeResponse.data;
 
         // Check if monorepoFiles exist
@@ -70,22 +97,64 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             analysisResult.monorepoFiles.forEach((file: { path: string; content: string }) => {
                 zip.file(file.path, file.content);
             });
-            const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
-            const zipBase64 = Buffer.from(zipBuffer).toString('base64');
 
-            // [수정] packageName을 사용하여 baseTitle 정의
-            const baseTitle = analysisResult.packageName || `monorepo-${deployment._id as string}`;
+            // Extract package name from package.json in the ZIP
+            let packageName = `monorepo-${deployment._id as string}`; // fallback
+            const packageJsonFile = analysisResult.monorepoFiles.find(
+                (file: { path: string; content: string }) => file.path === 'package.json',
+            );
+            if (packageJsonFile) {
+                try {
+                    const packageJson = JSON.parse(packageJsonFile.content);
+                    if (packageJson.name) {
+                        packageName = packageJson.name;
+                        await log(`Found package.json name: ${packageName}`);
+                    }
+                } catch (parseError) {
+                    await log(`Warning: Could not parse package.json, using fallback name`);
+                }
+            }
 
-            // [신규] 1. 'uploadProduct' API (운영)에 사용할 title (확장자 없음)
-            // API 명세(image_dc2ffb.png)에 따라 package.json의 name을 그대로 사용
-            const productTitle = baseTitle;
+            // Add metadata.json required by Product API
+            const metadata = {
+                name: packageName,
+                version: '1.0.0',
+                description: 'AI-generated monorepo project',
+                createdAt: new Date().toISOString(),
+                deploymentId: deployment._id?.toString(),
+            };
+            zip.file('metadata.json', JSON.stringify(metadata, null, 2));
 
-            // [신규] 2. 'uploadToS3' (개발)에 사용할 fileName (확장자 포함)
-            // S3 Key는 파일명을 명시하는 것이 좋으므로 .zip을 포함
-            const productFileName = `${baseTitle}.zip`;
+            // Generate ZIP with proper compression and ZIP64 support
+            await log(`Generating ZIP archive with ${analysisResult.monorepoFiles.length + 1} files...`);
+            const zipBuffer = await zip.generateAsync({
+                type: 'nodebuffer',
+                compression: 'DEFLATE',
+                compressionOptions: {
+                    level: 9,
+                },
+            });
+            const zipBase64 = zipBuffer.toString('base64');
+            await log(
+                `ZIP generated successfully. Size: ${zipBuffer.length} bytes, Base64 length: ${zipBase64.length}`,
+            );
 
-            await log(`Using productTitle (for Prod API): ${productTitle}`);
-            await log(`Using productFileName (for Dev S3): ${productFileName}`);
+            // Save base64 to file for debugging/Postman testing
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const fs = require('fs');
+            const outputPath = `/Users/park/Desktop/YourD/capstone25-t7-aim/base64-output.txt`;
+            fs.writeFileSync(outputPath, zipBase64);
+            await log(`Base64 data saved to: ${outputPath}`);
+
+            // Use package.json name as title (required by Product API)
+            const productTitle = packageName;
+            const productFileName = `${packageName}.zip`;
+
+            await log(`Using title for Product API: ${productTitle}`);
+            await log(`Base64 data length: ${zipBase64.length} characters`);
+            console.log('\n=== FULL BASE64 DATA (for Postman testing) ===');
+            console.log(zipBase64);
+            console.log('=== END BASE64 DATA ===\n');
 
             let s3Uri: string; // 최종 URL을 저장할 변수
 
