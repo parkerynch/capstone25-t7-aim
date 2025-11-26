@@ -137,7 +137,7 @@ export async function uploadProduct(
         console.log('\n=== UPLOAD RESPONSE ===');
         console.log('Status:', response.status, response.statusText);
         console.log('Response Data:');
-        // console.log(JSON.stringify(response.data, null, 2));
+        console.log(JSON.stringify(response.data, null, 2));
         console.log('======================\n');
 
         // 1. Upload response에서 id 추출

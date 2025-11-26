@@ -11,7 +11,7 @@ interface StatCard {
 
 interface SystemStat {
     label: string;
-    value: string;
+    value: string | JSX.Element;
 }
 
 interface DashboardProps {
@@ -70,7 +70,16 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 label: '배포 완료',
                 value: deployment?.completedAt ? new Date(deployment.completedAt).toLocaleString('ko-KR') : '진행중',
             },
-            { label: '웹사이트 URL', value: deployment?.websiteUrl || '없음' },
+            {
+                label: '웹사이트 URL',
+                value: deployment?.websiteUrl ? (
+                    <a href={deployment.websiteUrl} target="_blank" rel="noopener noreferrer">
+                        {deployment.websiteUrl}
+                    </a>
+                ) : (
+                    '없음'
+                ),
+            },
         ];
     };
 
