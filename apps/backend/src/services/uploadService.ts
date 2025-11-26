@@ -84,11 +84,12 @@ export interface UploadResponse {
 
 export async function uploadProduct(
     body: ProductUploadBody,
-    productId: number = 0, // 현재는 0으로 고정 사용
+    productId: number = 1008343, // ID 고정
+    step: string = 'build-monorepo', // step 파라미터 추가
 ): Promise<UploadResponse> {
     try {
         const useMock = false; // mock 모드 비활성화
-        const path = `/codes/${productId}/upload${useMock ? '?mock=1' : ''}`;
+        const path = `/codes/${productId}/upload?step=${step}${useMock ? '&mock=1' : ''}`;
 
         console.log(`> Uploading to: ${api.defaults.baseURL}${path}`);
 
