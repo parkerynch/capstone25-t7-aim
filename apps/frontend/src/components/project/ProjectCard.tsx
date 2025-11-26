@@ -191,7 +191,7 @@ export function ProjectCard() {
                             </div>
 
                             {/* 배포 완료된 경우 URL 표시 */}
-                            {project.latestDeployment?.status === 'SUCCESS' && project.latestDeployment.frontendUrl && (
+                            {project.latestDeployment?.status === 'SUCCESS' && project.latestDeployment.websiteUrl && (
                                 <div className="flex items-center gap-2 text-sm">
                                     <svg
                                         className="w-4 h-4 text-blue-500"
@@ -208,12 +208,12 @@ export function ProjectCard() {
                                     </svg>
                                     <div className="text-gray-600">배포된 URL:</div>
                                     <a
-                                        href={project.latestDeployment.frontendUrl}
+                                        href={project.latestDeployment.websiteUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-blue-600 hover:text-blue-800 underline truncate ml-1"
                                     >
-                                        {project.latestDeployment.frontendUrl}
+                                        {project.latestDeployment.websiteUrl}
                                     </a>
                                 </div>
                             )}

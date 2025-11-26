@@ -8,8 +8,7 @@ export interface DeploymentStatusResponse {
     status: 'PENDING' | 'IN_PROGRESS' | 'SUCCESS' | 'FAILED';
     currentStep?: 'UPLOADING' | 'ANALYZING' | 'SPLITTING' | 'DEPLOYING_BACKEND' | 'DEPLOYING_FRONTEND' | 'FINALIZING';
     projectId: string;
-    frontendUrl?: string;
-    backendUrl?: string;
+    websiteUrl?: string;
 }
 
 // 배포 관련 API 함수들

@@ -209,9 +209,9 @@ export default function FileDetails({ project }: FileDetailsProps) {
                             </div>
                         )}
 
-                        {project.latestDeployment.frontendUrl && (
+                        {project.latestDeployment.websiteUrl && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-600">프론트엔드 URL</label>
+                                <label className="text-sm font-medium text-gray-600">웹사이트 URL</label>
                                 <div className="flex items-center space-x-2">
                                     <svg
                                         className="w-5 h-5 text-blue-400"
@@ -227,41 +227,12 @@ export default function FileDetails({ project }: FileDetailsProps) {
                                         />
                                     </svg>
                                     <a
-                                        href={project.latestDeployment.frontendUrl}
+                                        href={project.latestDeployment.websiteUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-blue-600 hover:text-blue-800 underline truncate"
                                     >
-                                        {project.latestDeployment.frontendUrl}
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-
-                        {project.latestDeployment.backendUrl && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-600">백엔드 URL</label>
-                                <div className="flex items-center space-x-2">
-                                    <svg
-                                        className="w-5 h-5 text-purple-400"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-                                        />
-                                    </svg>
-                                    <a
-                                        href={project.latestDeployment.backendUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-purple-600 hover:text-purple-800 underline truncate"
-                                    >
-                                        {project.latestDeployment.backendUrl}
+                                        {project.latestDeployment.websiteUrl}
                                     </a>
                                 </div>
                             </div>

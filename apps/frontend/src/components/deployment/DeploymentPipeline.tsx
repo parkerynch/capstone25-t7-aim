@@ -92,8 +92,7 @@ export default function DeploymentPipeline({
                     if (deployment) {
                         deployment.status = statusData.status;
                         deployment.currentStep = statusData.currentStep;
-                        deployment.frontendUrl = statusData.frontendUrl;
-                        deployment.backendUrl = statusData.backendUrl;
+                        deployment.websiteUrl = statusData.websiteUrl;
                         deployment.projectId = statusData.projectId;
                     }
                 } else {
@@ -180,7 +179,7 @@ export default function DeploymentPipeline({
                     setIsPolling(false);
                     // 배포 완료 시 모달 표시 (SUCCESS일 때만)
                     if (overallStatus === 'SUCCESS') {
-                        const url = deployment.frontendUrl || `https://${deployment.projectId}.app`;
+                        const url = deployment.websiteUrl || `https://${deployment.projectId}.app`;
                         setDeployedUrl(url);
                         setShowModal(true);
                     }
@@ -369,7 +368,7 @@ export default function DeploymentPipeline({
                                 {/* URL Display */}
                                 <div className="mb-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Deployed URL:
+                                        Deployed Website URL:
                                     </label>
                                     <div className="flex items-center gap-2 p-4 bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-blue-100 rounded-xl">
                                         <span className="flex-1 text-sm font-mono text-blue-600 truncate">
@@ -394,7 +393,7 @@ export default function DeploymentPipeline({
                                         onClick={handleVisitSite}
                                         className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
                                     >
-                                        Go to Deployed Url
+                                        Go to Website
                                     </motion.button>
 
                                     <motion.button

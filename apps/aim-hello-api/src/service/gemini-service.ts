@@ -42,22 +42,19 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             console.log(`Template Zip root path detected: ${templateRootPath}`);
         }
 
-        // --- 2. [수정됨] 컨텍스트 추출 (prepare.sh 기준) ---
+        // --- 2. 컨텍스트 추출 (prepare.sh 기준) ---
         console.log('Step 2: Extracting original files from User Zip (prepare.sh logic)');
         const frontendRootFiles: { path: string; content: string }[] = [];
         const frontendSrcFiles: { path: string; content: string }[] = [];
-        const backendSrcFiles: { path: string; content: string }[] = []; // [신규] backend/utils용
+        const backendSrcFiles: { path: string; content: string }[] = []; // backend/utils용
 
         let originalServiceCode: string | null = null;
         let originalTypeCode: string | null = null;
         let originalAppCode: string | null = null;
         let originalMetadataJson: Record<string, any> | null = null;
-        let originalPackageName: string | null = null; // [신규] package.json의 name 저장
+        let originalPackageName: string | null = null; // package.json의 name 저장
 
-        // [수정] refactor-prepare.sh가 복사하는 Root 파일 목록 (index.html만)
-        const userZipRootFiles = new Set([
-            'index.html', //
-        ]);
+        const userZipRootFiles = new Set(['index.html']);
 
         for (const [filePath, file] of Object.entries(userZip.files)) {
             if (file.dir) continue;
@@ -89,13 +86,13 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             } else if (userZipRootFiles.has(filePath)) {
                 frontendRootFiles.push({ path: filePath, content }); // index.html
             }
-            // [신규] utils/ 복사 로직 (BE/FE)
+            // utils/ 복사 로직 (BE/FE)
             else if (filePath.startsWith('utils/')) {
                 const utilPath = filePath.substring(6); // 'utils/' 제거
                 frontendSrcFiles.push({ path: `utils/${utilPath}`, content }); //
                 backendSrcFiles.push({ path: `utils/${utilPath}`, content }); //
             }
-            // [신규] App.tsx, components/, constants.ts, index.tsx 등
+            // App.tsx, components/, constants.ts, index.tsx 등
             else if (
                 filePath.startsWith('components/') || //
                 filePath === 'constants.ts' || //
@@ -120,9 +117,8 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             throw new AimException(ErrorCode.INVALID_INPUT, 'services/geminiService.ts not found in zip file.');
         }
 
-        // --- 3. [수정됨] 컨텍스트 추출 (템플릿 Zip) ---
+        // --- 3. 컨텍스트 추출 (템플릿 Zip) ---
         console.log('Step 3: Loading context from Template Zip');
-        // [제거됨] backendPort 읽기 로직
         const apiTemplateFile = templateZip.file(templateRootPath + 'apps/backend/src/api/hello-api.ts');
         if (!apiTemplateFile) {
             throw new AimException(ErrorCode.INVALID_INPUT, 'hello-api.ts not found in template zip.');
@@ -154,37 +150,19 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             config: { systemInstruction: beSystemPrompt, temperature: 0.8, topP: 0.95 },
         };
 
-        const maxRetries = 3;
-        let lastError: unknown;
         let beResult;
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                console.log(`Calling Gemini API for Backend (attempt ${attempt}/${maxRetries})...`);
-                beResult = await ai.models.generateContent(beParams);
-                break;
-            } catch (error) {
-                lastError = error;
-                console.error(`❌ Gemini API call failed (Backend) - attempt ${attempt}:`, error);
+        try {
+            console.log(`Calling Gemini API for Backend...`);
+            beResult = await ai.models.generateContent(beParams);
+        } catch (error) {
+            console.error(`❌ Gemini API call failed (Backend):`, error);
 
-                if (error instanceof Error) {
-                    console.error('   Error message:', error.message);
-                }
-
-                if (attempt < maxRetries) {
-                    const waitTime = Math.pow(2, attempt) * 1000;
-                    console.log(`   Retrying in ${waitTime / 1000} seconds...`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                }
+            if (error instanceof Error) {
+                console.error('   Error message:', error.message);
             }
-        }
 
-        if (!beResult) {
-            console.error('❌ All Gemini API retry attempts failed (Backend)');
-            throw new AimException(
-                ErrorCode.AI_MODEL_ERROR,
-                `Gemini API failed after ${maxRetries} attempts: ${lastError}`,
-            );
+            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed: ${error}`);
         }
 
         const beResponseText = beResult.text.trim();
@@ -213,33 +191,17 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
 
         let feResult;
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                console.log(`Calling Gemini API for Frontend (attempt ${attempt}/${maxRetries})...`);
-                feResult = await ai.models.generateContent(feParams);
-                break;
-            } catch (error) {
-                lastError = error;
-                console.error(`❌ Gemini API call failed (Frontend) - attempt ${attempt}:`, error);
+        try {
+            console.log(`Calling Gemini API for Frontend...`);
+            feResult = await ai.models.generateContent(feParams);
+        } catch (error) {
+            console.error(`❌ Gemini API call failed (Frontend):`, error);
 
-                if (error instanceof Error) {
-                    console.error('   Error message:', error.message);
-                }
-
-                if (attempt < maxRetries) {
-                    const waitTime = Math.pow(2, attempt) * 1000;
-                    console.log(`   Retrying in ${waitTime / 1000} seconds...`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                }
+            if (error instanceof Error) {
+                console.error('   Error message:', error.message);
             }
-        }
 
-        if (!feResult) {
-            console.error('❌ All Gemini API retry attempts failed (Frontend)');
-            throw new AimException(
-                ErrorCode.AI_MODEL_ERROR,
-                `Gemini API failed after ${maxRetries} attempts: ${lastError}`,
-            );
+            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed: ${error}`);
         }
 
         const feResponseText = feResult.text.trim();
@@ -249,7 +211,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         const frontendFiles = parseAiResponse(feResponseText, 'frontend');
         console.log(`Step 6.2: AI Call 2 (Frontend) complete. Found keys: ${Object.keys(frontendFiles).join(', ')}`);
 
-        // --- 7. [수정됨] Zip 병합 (AI 결과 + prepare.sh 백엔드 복사) ---
+        // --- 7. Zip 병합 (AI 결과 + prepare.sh 백엔드 복사) ---
         console.log('Step 7: Merging generated code into template Zip');
 
         // [FIX] AI가 쓴 파일의 '상대 경로'를 추적 (예: 'App.tsx')
@@ -258,9 +220,9 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         const beFileMap = getFileMap('backend');
         const feFileMap = getFileMap('frontend');
 
-        // 7.1. 백엔드 파일 덮어쓰기 (AI 생성)
+        // 백엔드 파일 덮어쓰기 (AI 생성)
         if (backendFiles.serviceCode) {
-            // [수정] Flash 모델이 SYSTEM.md의 './types' 지침을 어기고
+            // Flash 모델이 SYSTEM.md의 './types' 지침을 어기고
             // '../types'로 잘못 생성하는 경우를 대비한 강제 수정 로직 (사용자 요청)
             const correctedServiceCode = backendFiles.serviceCode.replace(
                 /from\s+['"]\.\.\/types['"]/g, // AI가 실수로 만든 경로
@@ -278,17 +240,17 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             console.log(`Writing BE file to zip: ${beApiPath}`);
         }
 
-        // 7.2. 프론트엔드 파일 덮어쓰기 (AI 생성)
+        // 프론트엔드 파일 덮어쓰기 (AI 생성)
         if (frontendFiles.serviceCode) {
             const feSvcPath = templateRootPath + feFileMap.serviceCode;
             templateZip.file(feSvcPath, frontendFiles.serviceCode);
             console.log(`Writing FE file to zip: ${feSvcPath}`);
 
-            // [FIX] 8.1단계의 file.path와 일치하는 키를 Set에 추가
+            // 8.1단계의 file.path와 일치하는 키를 Set에 추가
             aiWrittenRelativePaths.add('services/geminiService.ts');
         }
 
-        // 7.3. types.ts 복사 (refactor-prepare.sh [3/4], [4/4] 역할)
+        // types.ts 복사 (refactor-prepare.sh [3/4], [4/4] 역할)
         if (originalTypeCode) {
             const beTypePath = templateRootPath + beFileMap.typeCode; // apps/backend/src/services/types.ts
             templateZip.file(beTypePath, originalTypeCode);
@@ -299,7 +261,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             console.log(`Copied original types.ts to: ${feTypePath}`);
         }
 
-        // 7.4. 백엔드 의존성 추가 (@google/genai) (refactor-prepare.sh [1/4] 역할)
+        // 백엔드 의존성 추가 (@google/genai) (refactor-prepare.sh [1/4] 역할)
         const bePkgPath = templateRootPath + `apps/backend/package.json`;
         const bePkgFile = templateZip.file(bePkgPath);
         if (bePkgFile) {
@@ -316,7 +278,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             }
         }
 
-        // 7.5. [수정됨] 환경 변수(none.yml) 설정 (사용자 요청 "필수 로직")
+        // 환경 변수(none.yml) 설정 (사용자 요청 "필수 로직")
         if (originalMetadataJson && originalMetadataJson.geminiApiKey) {
             const backendEnvPath = templateRootPath + `apps/backend/env/none.yml`;
             const envFile = templateZip.file(backendEnvPath);
@@ -336,7 +298,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             }
         }
 
-        // 7.6. [신규] 백엔드 utils 복사 (refactor-prepare.sh [4/4] 역할)
+        // 백엔드 utils 복사 (refactor-prepare.sh [4/4] 역할)
         backendSrcFiles.forEach(file => {
             // file.path는 'utils/myUtil.ts'
             const finalBeSrcPath = templateRootPath + `apps/backend/src/${file.path}`;
@@ -344,14 +306,14 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             console.log(`Copying user BE src file to: ${finalBeSrcPath}`);
         });
 
-        // --- 8. [수정됨] Zip 병합 (사용자 파일 이식 - refactor-prepare.sh [4/4] 역할) ---
+        // --- 8. Zip 병합 (사용자 파일 이식 - refactor-prepare.sh [4/4] 역할) ---
         console.log('Step 8: Merging user files into template Zip (prepare.sh FE copy)');
 
-        // 8.1. 사용자 Src 파일 이식 (App.tsx, components/, metadata.json 등)
+        // 사용자 Src 파일 이식 (App.tsx, components/, metadata.json 등)
         frontendSrcFiles.forEach(file => {
             // file.path는 'App.tsx', 'components/Btn.tsx', 'metadata.json', 'services/geminiService.ts' 등
 
-            // [FIX] 7.2단계에서 AI가 이미 이 파일을 썼다면, 원본 파일로 덮어쓰지 않음
+            // 7.2단계에서 AI가 이미 이 파일을 썼다면, 원본 파일로 덮어쓰지 않음
             if (aiWrittenRelativePaths.has(file.path)) {
                 console.log(`Skipping copy of ${file.path}, AI version already written.`);
                 return; // 다음 파일로
@@ -371,7 +333,7 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
             console.log(`Copying user src file to: ${finalSrcPath}`);
         });
 
-        // 8.2. 사용자 Root 파일 이식 (index.html만)
+        // 사용자 Root 파일 이식 (index.html만)
         for (const file of frontendRootFiles) {
             let content = file.content;
             const targetPath = templateRootPath + `apps/frontend/${file.path}`;
@@ -386,8 +348,6 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
                     .replace(/src="\.\/index.tsx"/g, 'src="/src/index.tsx"'); //
                 console.log('Fixed index.html paths (sed replacement)');
             }
-            // [제거됨] package.json 병합 로직 (prepare.sh에 없음)
-            // [제거됨] vite.config.ts 수정 로직 (prepare.sh에 없음)
 
             templateZip.file(targetPath, content);
             console.log(`Copying user root file to: ${targetPath}`);

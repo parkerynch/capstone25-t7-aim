@@ -235,14 +235,14 @@ export default function ProjectDetailPage() {
                             />
                         </svg>
                         <span className="font-semibold">배포된 URL</span>
-                        {project.latestDeployment?.status === 'SUCCESS' && project.latestDeployment.frontendUrl ? (
+                        {project.latestDeployment?.status === 'SUCCESS' && project.latestDeployment.websiteUrl ? (
                             <a
-                                href={project.latestDeployment.frontendUrl}
+                                href={project.latestDeployment.websiteUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800 underline ml-2"
                             >
-                                {project.latestDeployment.frontendUrl}
+                                {project.latestDeployment.websiteUrl}
                             </a>
                         ) : (
                             <span className="text-gray-500 ml-2">배포 완료 후 표시됩니다</span>

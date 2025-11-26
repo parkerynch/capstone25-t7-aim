@@ -70,8 +70,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 label: '배포 완료',
                 value: deployment?.completedAt ? new Date(deployment.completedAt).toLocaleString('ko-KR') : '진행중',
             },
-            { label: '프론트엔드 URL', value: deployment?.frontendUrl || '없음' },
-            { label: '백엔드 URL', value: deployment?.backendUrl || '없음' },
+            { label: '웹사이트 URL', value: deployment?.websiteUrl || '없음' },
         ];
     };
 

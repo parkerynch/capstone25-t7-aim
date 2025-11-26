@@ -1,10 +1,11 @@
 import { Log } from '../models/log.model';
-import { generateReadOnlyUrl, uploadProduct, uploadToS3 } from './uploadService';
+import { generateReadOnlyUrl, uploadProduct, uploadToS3, pollForWebsiteUrl } from './uploadService';
 import axios from 'axios';
 import { IDeployment, Deployment } from '../models/deployment.model';
 import { AimException, ErrorCode } from '@shared/errors';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import JSZip from 'jszip';
+import * as path from 'path';
 
 const AIM_HELLO_API_URL = process.env.AIM_HELLO_API_URL || 'http://localhost:8000';
 
@@ -52,38 +53,16 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
 
         // Send pre-signed URL to AI analysis service
         let analyzeResponse;
-        const maxRetries = 3;
-        let lastError: unknown;
-
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                await log(`AI 분석 서비스 호출 중... (시도 ${attempt}/${maxRetries})`);
-                analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/refactor-code/gemini`, {
-                    s3Url: signedUrl,
-                });
-                await log(`AI 분석 서비스 응답 성공`);
-                break;
-            } catch (axiosError) {
-                lastError = axiosError;
-                const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
-                console.error(`❌ AI 분석 실패 (시도 ${attempt}/${maxRetries}):`, errorDetails);
-
-                if (attempt < maxRetries) {
-                    const waitTime = Math.pow(2, attempt) * 1000;
-                    await log(`${waitTime / 1000}초 후 재시도...`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                } else {
-                    console.error(`❌ 모든 재시도 실패 (${maxRetries}회)`);
-                    throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
-                }
-            }
-        }
-
-        if (!analyzeResponse) {
-            throw new AimException(
-                ErrorCode.AI_MODEL_UNAVAILABLE,
-                `AI analysis failed after ${maxRetries} attempts: ${lastError}`,
-            );
+        try {
+            await log(`AI 분석 서비스 호출 중...`);
+            analyzeResponse = await axios.post(`${AIM_HELLO_API_URL}/hello/refactor-code/gemini`, {
+                s3Url: signedUrl,
+            });
+            await log(`AI 분석 서비스 응답 성공`);
+        } catch (axiosError) {
+            const errorDetails = formatErrorMessage(axiosError, 'AI analysis service failed');
+            console.error(`❌ AI 분석 실패:`, errorDetails);
+            throw new AimException(ErrorCode.AI_MODEL_UNAVAILABLE, errorDetails);
         }
 
         const analysisResult = analyzeResponse.data;
@@ -142,7 +121,7 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             // Save base64 to file for debugging/Postman testing
             // eslint-disable-next-line @typescript-eslint/no-var-requires
             const fs = require('fs');
-            const outputPath = `/Users/park/Desktop/YourD/capstone25-t7-aim/base64-output.txt`;
+            const outputPath = path.join(process.cwd(), 'tmp', 'base64-output.txt');
             fs.writeFileSync(outputPath, zipBase64);
             await log(`Base64 data saved to: ${outputPath}`);
 
@@ -163,12 +142,29 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
                 // --- 1. 운영 환경: 실제 Product API로 업로드 ---
 
                 await log('Production environment. Uploading to real Product API...');
-                const response = await uploadProduct({
-                    data: zipBase64,
-                    title: productTitle,
-                });
+                const response = await uploadProduct(
+                    {
+                        data: zipBase64,
+                        title: productTitle,
+                    },
+                    (deployment._id as string).toString(),
+                );
                 s3Uri = response.s3Uri;
                 await log(`ZIP uploaded to Product API. s3Uri: ${s3Uri}`);
+
+                // Eureka Deployment ID 저장
+                if (response.eurekaDeploymentId) {
+                    await Deployment.updateOne(
+                        { _id: deployment._id },
+                        { $set: { eurekaDeploymentId: response.eurekaDeploymentId } },
+                    );
+                    await log(`Eureka Deployment ID saved: ${response.eurekaDeploymentId}`);
+
+                    // 비동기로 website URL 폴링 시작
+                    pollForWebsiteUrl(deployment._id as string, response.eurekaDeploymentId).catch(error => {
+                        console.error('Failed to poll for website URL:', error);
+                    });
+                }
             } else {
                 // --- 2. 테스트/개발 환경: 예전 S3(LocalStack) 로직으로 업로드 ---
                 await log(`[MOCK] Development environment. Uploading to internal S3 (LocalStack)...`);
@@ -214,15 +210,10 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // 3. Configure environment variables
         // For now, simulate deployment with LocalStack
 
-        const backendUrl = `https://${deployment._id}-backend.lambda-url.us-east-1.on.aws/`;
-
         // Simulate deployment delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        await log(`Backend deployed successfully at ${backendUrl}`);
-
-        // Update deployment with backend URL
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { backendUrl } });
+        await log(`Backend deployment simulation completed`);
 
         // Deploying Frontend 단계
         await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'DEPLOYING_FRONTEND' } });
@@ -236,15 +227,15 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // 4. Set up CloudFront CDN (optional)
         // For now, simulate deployment with LocalStack
 
-        const frontendUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
+        const websiteUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
 
         // Simulate deployment delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        await log(`Frontend deployed successfully at ${frontendUrl}`);
+        await log(`Frontend deployed successfully at ${websiteUrl}`);
 
         // Update deployment with frontend URL
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { frontendUrl } });
+        await Deployment.updateOne({ _id: deployment._id }, { $set: { websiteUrl } });
 
         // Finalizing 단계
         await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'FINALIZING' } });

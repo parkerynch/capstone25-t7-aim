@@ -4,6 +4,7 @@ import { s3Client, S3_BUCKET, useLocalStack } from '../lib/s3Client';
 import { v4 as uuidv4 } from 'uuid';
 import { AimException, ErrorCode } from '@shared/errors';
 import axios from 'axios';
+import { deploymentRepository } from '../repositories/deployment.repository';
 
 export const uploadToS3 = async (base64Data: string, fileName: string) => {
     const key = `${uuidv4()}-${fileName}`;
@@ -53,9 +54,7 @@ const apiKey = process.env.API_KEY || 'your-api-key';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // 개발/운영 환경에 따라 baseURL 분기
-const baseURL = isProduction
-    ? 'https://openapi.eureka.codes/v1' // 운영
-    : 'https://openapi.eureka.codes/d1'; // 개발
+const baseURL = 'https://openapi.eureka.codes/v1'; // 항상 v1 사용
 
 // axios 인스턴스 생성
 const api = axios.create({
@@ -68,9 +67,40 @@ const api = axios.create({
     maxBodyLength: Infinity,
 });
 
-console.log(`📡 Product API Config: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-console.log(`   Base URL: ${baseURL}`);
-console.log(`   API Key: ${apiKey.substring(0, 8)}...`);
+export async function pollForWebsiteUrl(deploymentDbId: string, eurekaDeploymentId: string): Promise<void> {
+    const maxAttempts = 30; // 최대 30회 시도 (약 5분, 10초 간격)
+    const intervalMs = 10000; // 10초 간격
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            console.log(`Polling attempt ${attempt}/${maxAttempts} for website URL (Eureka ID: ${eurekaDeploymentId})`);
+
+            const productPath = `/codes/${eurekaDeploymentId}@2/product`;
+            const productResponse = await api.get(productPath);
+
+            if (productResponse.data.stack$ && productResponse.data.stack$.websiteEndpoint) {
+                const websiteEndpoint = productResponse.data.stack$.websiteEndpoint;
+                console.log(`🌐 Website Endpoint found: ${websiteEndpoint}`);
+
+                // DB에 websiteEndpoint 저장
+                await deploymentRepository.updateDeploymentUrls(deploymentDbId, websiteEndpoint);
+                console.log(`✅ Website URL saved to DB: ${websiteEndpoint}`);
+                return; // 성공하면 종료
+            } else {
+                console.log(`⏳ Website Endpoint not ready yet (attempt ${attempt})`);
+            }
+        } catch (error) {
+            console.log(`⚠️ Polling error (attempt ${attempt}):`, error);
+        }
+
+        // 마지막 시도가 아니면 대기
+        if (attempt < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, intervalMs));
+        }
+    }
+
+    console.log(`❌ Failed to get website URL after ${maxAttempts} attempts`);
+}
 
 export interface ProductUploadBody {
     data: string; // Base64 인코딩된 Zip 데이터
@@ -80,10 +110,12 @@ export interface ProductUploadBody {
 
 export interface UploadResponse {
     s3Uri: string; // 업로드 결과 URL
+    eurekaDeploymentId: string; // Eureka API에서 반환된 deployment ID
 }
 
 export async function uploadProduct(
     body: ProductUploadBody,
+    deploymentDbId: string, // DB의 deployment _id
     productId: number = 1008343, // ID 고정
     step: string = 'build-monorepo', // step 파라미터 추가
 ): Promise<UploadResponse> {
@@ -92,6 +124,7 @@ export async function uploadProduct(
         const path = `/codes/${productId}/upload?step=${step}${useMock ? '&mock=1' : ''}`;
 
         console.log(`> Uploading to: ${api.defaults.baseURL}${path}`);
+        console.log(`> Using Product ID: ${productId} (${!isProduction ? 'DEMO' : 'PRODUCTION'})`);
 
         console.log('\n=== REQUEST BODY FOR POSTMAN ===');
         console.log(JSON.stringify(body, null, 2));
@@ -104,46 +137,18 @@ export async function uploadProduct(
         console.log('\n=== UPLOAD RESPONSE ===');
         console.log('Status:', response.status, response.statusText);
         console.log('Response Data:');
-        console.log(JSON.stringify(response.data, null, 2));
+        // console.log(JSON.stringify(response.data, null, 2));
         console.log('======================\n');
 
         // 1. Upload response에서 id 추출
         if (response.data.id) {
-            const deploymentId = response.data.id;
-            console.log(`📊 Deployment ID: ${deploymentId}`);
+            const eurekaDeploymentId = response.data.id;
+            console.log(`Eureka Deployment ID: ${eurekaDeploymentId}`);
 
-            // 2. GET /codes/{id}@2/product 요청
-            const productPath = `/codes/${deploymentId}@2/product`;
-            console.log(`🔍 Fetching product info: ${api.defaults.baseURL}${productPath}\n`);
-
-            try {
-                const productResponse = await api.get(productPath);
-
-                console.log('=== PRODUCT RESPONSE ===');
-                console.log('Full Response Data:');
-                console.log(JSON.stringify(productResponse.data, null, 2));
-                console.log('========================\n');
-
-                // 3. stack$.websiteEndpoint와 progress$ 확인
-                if (productResponse.data.stack$) {
-                    console.log('📦 Stack Info:');
-                    console.log(JSON.stringify(productResponse.data.stack$, null, 2));
-
-                    if (productResponse.data.stack$.websiteEndpoint) {
-                        console.log(`\n🌐 Website Endpoint: ${productResponse.data.stack$.websiteEndpoint}`);
-                    }
-                }
-
-                if (productResponse.data.progress$) {
-                    console.log('\n⏳ Deployment Progress:');
-                    console.log(JSON.stringify(productResponse.data.progress$, null, 2));
-                }
-            } catch (productError) {
-                console.log('⚠️ Could not fetch product info:', productError);
-            }
+            return { s3Uri: response.data.s3Uri, eurekaDeploymentId };
         }
 
-        return response.data;
+        return { s3Uri: response.data.s3Uri, eurekaDeploymentId: '' };
     } catch (error) {
         console.error('Failed to upload product to external API:', error);
         if (axios.isAxiosError(error)) {

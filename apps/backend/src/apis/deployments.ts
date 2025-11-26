@@ -11,8 +11,15 @@ router.get('/deployments/:deploymentId', async (req, res) => {
 
 router.get('/deployments/:deploymentId/status', async (req, res) => {
     const { deploymentId } = req.params;
-    const result = await deploymentRepository.getDeploymentStatusById(deploymentId);
-    res.json(result);
+    const result = await deploymentRepository.getDeploymentById(deploymentId);
+    // status API를 위한 간소화된 응답
+    const statusResponse = {
+        status: result.deployment.status,
+        currentStep: result.deployment.currentStep,
+        projectId: result.deployment.projectId,
+        websiteUrl: result.deployment.websiteUrl,
+    };
+    res.json(statusResponse);
 });
 
 export default router;
