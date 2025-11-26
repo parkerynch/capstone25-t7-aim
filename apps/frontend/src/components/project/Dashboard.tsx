@@ -73,7 +73,12 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
             {
                 label: '웹사이트 URL',
                 value: deployment?.websiteUrl ? (
-                    <a href={deployment.websiteUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                        href={deployment.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline text-sm"
+                    >
                         {deployment.websiteUrl}
                     </a>
                 ) : (

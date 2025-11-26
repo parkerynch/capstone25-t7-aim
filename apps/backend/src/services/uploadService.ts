@@ -71,6 +71,9 @@ export async function pollForWebsiteUrl(deploymentDbId: string, eurekaDeployment
     const maxAttempts = 30; // 최대 30회 시도 (약 5분, 10초 간격)
     const intervalMs = 10000; // 10초 간격
 
+    // 배포 시작 시 currentStep을 DEPLOYING_BACKEND로 설정
+    await deploymentRepository.updateDeploymentData(deploymentDbId, { currentStep: 'DEPLOYING_BACKEND' });
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
             console.log(`Polling attempt ${attempt}/${maxAttempts} for website URL (Eureka ID: ${eurekaDeploymentId})`);
@@ -82,8 +85,11 @@ export async function pollForWebsiteUrl(deploymentDbId: string, eurekaDeployment
                 const websiteEndpoint = productResponse.data.stack$.websiteEndpoint;
                 console.log(`🌐 Website Endpoint found: ${websiteEndpoint}`);
 
-                // DB에 websiteEndpoint 저장
-                await deploymentRepository.updateDeploymentUrls(deploymentDbId, websiteEndpoint);
+                // DB에 websiteEndpoint 저장, currentStep을 FINALIZING으로 설정
+                await deploymentRepository.updateDeploymentData(deploymentDbId, {
+                    websiteUrl: websiteEndpoint,
+                    currentStep: 'FINALIZING',
+                });
                 console.log(`✅ Website URL saved to DB: ${websiteEndpoint}`);
                 return; // 성공하면 종료
             } else {

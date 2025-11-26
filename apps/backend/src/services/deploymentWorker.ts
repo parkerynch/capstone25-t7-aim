@@ -135,8 +135,6 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
             console.log(zipBase64);
             console.log('=== END BASE64 DATA ===\n');
 
-            let s3Uri: string; // 최종 URL을 저장할 변수
-
             // NODE_ENV 값에 따라 업로드 로직 분기
             if (process.env.NODE_ENV === 'production') {
                 // --- 1. 운영 환경: 실제 Product API로 업로드 ---
@@ -149,18 +147,18 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
                     },
                     (deployment._id as string).toString(),
                 );
-                s3Uri = response.s3Uri;
-                await log(`ZIP uploaded to Product API. s3Uri: ${s3Uri}`);
+                await log(`ZIP uploaded to Product API. s3Uri: ${response.s3Uri}`);
 
                 // Eureka Deployment ID 저장
                 if (response.eurekaDeploymentId) {
                     await Deployment.updateOne(
                         { _id: deployment._id },
-                        { $set: { eurekaDeploymentId: response.eurekaDeploymentId } },
+                        { $set: { eurekaDeploymentId: response.eurekaDeploymentId, monorepoZipUrl: response.s3Uri } },
                     );
                     await log(`Eureka Deployment ID saved: ${response.eurekaDeploymentId}`);
+                    await log(`s3Uri saved as monorepoZipUrl: ${response.s3Uri}`);
 
-                    // 비동기로 website URL 폴링 시작
+                    // 비동기로 website URL 폴링 시작 (이제 s3Uri도 가져옴)
                     pollForWebsiteUrl(deployment._id as string, response.eurekaDeploymentId).catch(error => {
                         console.error('Failed to poll for website URL:', error);
                     });
@@ -175,12 +173,11 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
 
                 // 2. S3 URL 생성
                 const { signedUrl } = await generateReadOnlyUrl(key);
-                s3Uri = signedUrl; // s3Uri 변수에 할당
-                await log(`Generated signed URL for ZIP: ${s3Uri}`);
-            }
+                await log(`Generated signed URL for ZIP: ${signedUrl}`);
 
-            // Deployment DB에 monorepoZipUrl 필드를 새 s3Uri로 업데이트
-            await Deployment.updateOne({ _id: deployment._id }, { $set: { monorepoZipUrl: s3Uri } });
+                // Development에서는 monorepoZipUrl을 signedUrl로 저장
+                await Deployment.updateOne({ _id: deployment._id }, { $set: { monorepoZipUrl: signedUrl } });
+            }
         } else {
             await log('No monorepo files generated.');
         } // Check if refactoring was successful
@@ -193,56 +190,8 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
         // Extract analysis data (for future use)
         // const analysis = analysisResult.analysis || analysisResult;
 
-        // Splitting 단계
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'SPLITTING' } });
-        const updatedDeployment3 = await Deployment.findById(deployment._id);
-        await log(`Splitting Frontend & Backend - currentStep set to: ${updatedDeployment3?.currentStep}`);
-        // This is a conceptual step, no actual code needed for this simulation
-
-        // Deploying Backend 단계
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'DEPLOYING_BACKEND' } });
-        const updatedDeployment4 = await Deployment.findById(deployment._id);
-        await log(`Deploying Backend to AWS Lambda - currentStep set to: ${updatedDeployment4?.currentStep}`);
-
-        // TODO: Implement actual AWS Lambda deployment
-        // 1. Create Lambda function from backend code
-        // 2. Set up API Gateway for the Lambda
-        // 3. Configure environment variables
-        // For now, simulate deployment with LocalStack
-
-        // Simulate deployment delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        await log(`Backend deployment simulation completed`);
-
-        // Deploying Frontend 단계
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'DEPLOYING_FRONTEND' } });
-        const updatedDeployment5 = await Deployment.findById(deployment._id);
-        await log(`Deploying Frontend to AWS S3 - currentStep set to: ${updatedDeployment5?.currentStep}`);
-
-        // TODO: Implement actual AWS S3 static website hosting
-        // 1. Build frontend application
-        // 2. Upload build artifacts to S3 bucket
-        // 3. Configure S3 for static website hosting
-        // 4. Set up CloudFront CDN (optional)
-        // For now, simulate deployment with LocalStack
-
-        const websiteUrl = `https://${deployment._id}-frontend.s3-website-us-east-1.amazonaws.com/`;
-
-        // Simulate deployment delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        await log(`Frontend deployed successfully at ${websiteUrl}`);
-
-        // Update deployment with frontend URL
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { websiteUrl } });
-
-        // Finalizing 단계
-        await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'FINALIZING' } });
-        const updatedDeployment6 = await Deployment.findById(deployment._id);
-        await log(`Finalizing Deployment - currentStep set to: ${updatedDeployment6?.currentStep}`);
-        // Deployment status update will be handled in queueService
-        await log('Deployment completed successfully.');
+        // 실제 배포는 Eureka에서 처리되므로 여기서는 완료 처리만
+        await log('Deployment process completed. Waiting for Eureka deployment to finish.');
     } catch (error) {
         console.error(error);
         if (error instanceof AimException) {

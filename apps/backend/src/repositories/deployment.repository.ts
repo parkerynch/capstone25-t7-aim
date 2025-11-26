@@ -40,10 +40,19 @@ export const deploymentRepository = {
         };
     },
 
-    async updateDeploymentUrls(deploymentId: string, websiteUrl?: string): Promise<void> {
+    async updateDeploymentData(
+        deploymentId: string,
+        data: { websiteUrl?: string; monorepoZipUrl?: string; currentStep?: string },
+    ): Promise<void> {
         const updateData: Record<string, unknown> = { updatedAt: new Date() };
-        if (websiteUrl !== undefined) {
-            updateData.websiteUrl = websiteUrl;
+        if (data.websiteUrl !== undefined) {
+            updateData.websiteUrl = data.websiteUrl;
+        }
+        if (data.monorepoZipUrl !== undefined) {
+            updateData.monorepoZipUrl = data.monorepoZipUrl;
+        }
+        if (data.currentStep !== undefined) {
+            updateData.currentStep = data.currentStep;
         }
 
         await Deployment.updateOne({ _id: deploymentId }, { $set: updateData });
