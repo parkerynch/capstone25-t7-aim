@@ -27,29 +27,29 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
             {
                 icon: '📊',
                 title: 'API 호출 수',
-                value: '1,234',
-                change: '+12%',
+                value: '0',
+                change: '',
                 changeColor: 'green' as 'green' | 'red',
             },
             {
                 icon: '⚡',
                 title: '평균 응답 시간',
-                value: '245ms',
-                change: '-5%',
+                value: '0',
+                change: '',
                 changeColor: 'green' as 'green' | 'red',
             },
             {
                 icon: '🚨',
                 title: '에러율',
-                value: '0.1%',
-                change: '-0.05%',
+                value: '0',
+                change: '',
                 changeColor: 'green' as 'green' | 'red',
             },
             {
                 icon: '👥',
                 title: '활성 사용자',
-                value: '89',
-                change: '+8',
+                value: '0',
+                change: '',
                 changeColor: 'green' as 'green' | 'red',
             },
         ];
@@ -70,21 +70,6 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 label: '배포 완료',
                 value: deployment?.completedAt ? new Date(deployment.completedAt).toLocaleString('ko-KR') : '진행중',
             },
-            {
-                label: '웹사이트 URL',
-                value: deployment?.websiteUrl ? (
-                    <a
-                        href={deployment.websiteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline text-sm"
-                    >
-                        {deployment.websiteUrl}
-                    </a>
-                ) : (
-                    '없음'
-                ),
-            },
         ];
     };
 
@@ -103,7 +88,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 {/* 헤더 */}
                 <div className="mb-8 flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Realtime-Monitoring</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Realtime-Monitoring</h1>
                         <p className="text-gray-600">배포된 AI Agent의 성능 및 상태 지표</p>
                     </div>
 
@@ -123,7 +108,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                     {statCards.map((card: StatCard, index: number) => (
                         <div
                             key={index}
-                            className="bg-gray-100 rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
                         >
                             {/* 아이콘 */}
                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4 text-2xl">
@@ -152,7 +137,7 @@ const Dashboard = ({ project }: DashboardProps): JSX.Element => {
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-6">시스템 상태</h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                         {systemStats.map((stat: SystemStat, index: number) => (
                             <div key={index}>
                                 <p className="text-sm text-gray-600 mb-2">{stat.label}</p>

@@ -14,7 +14,7 @@ default_env: &default_env
 local:
     <<: *default_env
     STAGE: 'local'
-    GEMINI_API_KEY: 'AIzaSyBhKUBDQDXY2CKcV7jcagyg_3cqqduEm7c' # Replace with your actual Gemini API key
+    GEMINI_API_KEY: 'AIzaSyB2saf2F-lpqUtoE113Nqv7-AkEJyT3e3s' # Replace with your actual Gemini API key
 
 #-----------------------------------
 # development server

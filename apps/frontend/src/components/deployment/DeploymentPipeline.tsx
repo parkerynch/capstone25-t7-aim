@@ -63,7 +63,7 @@ export default function DeploymentPipeline({
     ]);
 
     const [envVars] = useState<EnvVar[]>([
-        { key: 'API_KEY', value: 'sk-1234567890abcdef' },
+        { key: 'GEMINI_API_KEY', value: 'sk-1234567890abcdef' },
         { key: 'DB_URL', value: 'postgresql://localhost:5432/mydb' },
         { key: 'NODE_ENV', value: 'production' },
     ]);
@@ -312,9 +312,7 @@ export default function DeploymentPipeline({
                                 className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
                             >
                                 <span className="font-semibold text-gray-700">{env.key}:</span>
-                                <span className="font-mono text-gray-500 blur-sm hover:blur-none transition-all cursor-pointer">
-                                    {env.value}
-                                </span>
+                                <span className="font-mono text-gray-500 blur-sm">{env.value}</span>
                             </div>
                         ))}
                     </div>

@@ -240,29 +240,6 @@ export default function FileDetails({ project }: FileDetailsProps) {
                     </div>
                 </div>
             )}
-
-            {/* 퍼블리싱 상태 */}
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">추가 기능 (개발 예정)</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded border border-dashed border-gray-300">
-                        <h3 className="font-medium text-gray-700 mb-2">📊 성능 모니터링</h3>
-                        <p className="text-sm text-gray-500">실시간 성능 지표 및 모니터링 대시보드</p>
-                    </div>
-                    <div className="bg-white p-4 rounded border border-dashed border-gray-300">
-                        <h3 className="font-medium text-gray-700 mb-2">🔍 로그 분석</h3>
-                        <p className="text-sm text-gray-500">상세한 애플리케이션 로그 및 오류 분석</p>
-                    </div>
-                    <div className="bg-white p-4 rounded border border-dashed border-gray-300">
-                        <h3 className="font-medium text-gray-700 mb-2">📈 사용량 통계</h3>
-                        <p className="text-sm text-gray-500">API 호출량, 트래픽, 리소스 사용량 분석</p>
-                    </div>
-                    <div className="bg-white p-4 rounded border border-dashed border-gray-300">
-                        <h3 className="font-medium text-gray-700 mb-2">🔧 설정 관리</h3>
-                        <p className="text-sm text-gray-500">고급 설정 및 환경 구성 관리</p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

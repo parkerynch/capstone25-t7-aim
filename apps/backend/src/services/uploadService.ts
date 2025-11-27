@@ -68,7 +68,7 @@ const api = axios.create({
 });
 
 export async function pollForWebsiteUrl(deploymentDbId: string, eurekaDeploymentId: string): Promise<void> {
-    const maxAttempts = 30; // 최대 30회 시도 (약 5분, 10초 간격)
+    const maxAttempts = 50; // 최대 50회 시도 (약 8분 20초, 10초 간격)
     const intervalMs = 10000; // 10초 간격
 
     // 배포 시작 시 currentStep을 DEPLOYING_FRONTEND로 설정

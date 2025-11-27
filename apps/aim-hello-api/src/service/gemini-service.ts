@@ -151,18 +151,22 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         };
 
         let beResult;
-
-        try {
-            console.log(`Calling Gemini API for Backend...`);
-            beResult = await ai.models.generateContent(beParams);
-        } catch (error) {
-            console.error(`❌ Gemini API call failed (Backend):`, error);
-
-            if (error instanceof Error) {
-                console.error('   Error message:', error.message);
+        let lastError;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`Calling Gemini API for Backend... (Attempt ${attempt})`);
+                beResult = await ai.models.generateContent(beParams);
+                break;
+            } catch (error) {
+                lastError = error;
+                console.error(`❌ Gemini API call failed (Backend) [${attempt}/3]:`, error);
+                if (attempt < 3) {
+                    await new Promise(res => setTimeout(res, 1000));
+                }
             }
-
-            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed: ${error}`);
+        }
+        if (!beResult) {
+            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed after 3 attempts: ${lastError}`);
         }
 
         const beResponseText = beResult.text.trim();
@@ -190,18 +194,22 @@ export async function generateRefactoredCode($param: { s3Url: string }): Promise
         };
 
         let feResult;
-
-        try {
-            console.log(`Calling Gemini API for Frontend...`);
-            feResult = await ai.models.generateContent(feParams);
-        } catch (error) {
-            console.error(`❌ Gemini API call failed (Frontend):`, error);
-
-            if (error instanceof Error) {
-                console.error('   Error message:', error.message);
+        let lastFeError;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`Calling Gemini API for Frontend... (Attempt ${attempt})`);
+                feResult = await ai.models.generateContent(feParams);
+                break;
+            } catch (error) {
+                lastFeError = error;
+                console.error(`❌ Gemini API call failed (Frontend) [${attempt}/3]:`, error);
+                if (attempt < 3) {
+                    await new Promise(res => setTimeout(res, 1000));
+                }
             }
-
-            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed: ${error}`);
+        }
+        if (!feResult) {
+            throw new AimException(ErrorCode.AI_MODEL_ERROR, `Gemini API failed after 3 attempts: ${lastFeError}`);
         }
 
         const feResponseText = feResult.text.trim();
