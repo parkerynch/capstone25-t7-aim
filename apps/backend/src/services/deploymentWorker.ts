@@ -140,6 +140,11 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
                 // --- 1. 운영 환경: 실제 Product API로 업로드 ---
 
                 await log('Production environment. Uploading to real Product API...');
+
+                // Splitting 단계 설정
+                await Deployment.updateOne({ _id: deployment._id }, { $set: { currentStep: 'SPLITTING' } });
+                await log('Splitting - currentStep set to SPLITTING');
+
                 const response = await uploadProduct(
                     {
                         data: zipBase64,
@@ -159,9 +164,7 @@ export const processDeploymentJob = async (deployment: IDeployment) => {
                     await log(`s3Uri saved as monorepoZipUrl: ${response.s3Uri}`);
 
                     // 비동기로 website URL 폴링 시작 (이제 s3Uri도 가져옴)
-                    pollForWebsiteUrl(deployment._id as string, response.eurekaDeploymentId).catch(error => {
-                        console.error('Failed to poll for website URL:', error);
-                    });
+                    await pollForWebsiteUrl(deployment._id as string, response.eurekaDeploymentId);
                 }
             } else {
                 // --- 2. 테스트/개발 환경: 예전 S3(LocalStack) 로직으로 업로드 ---
